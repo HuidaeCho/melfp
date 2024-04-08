@@ -4,6 +4,7 @@
 #include <string.h>
 #include <gdal.h>
 #include <cpl_conv.h>
+#include <omp.h>
 #ifdef _MSC_VER
 #include <winsock2.h>
 #else
@@ -34,9 +35,9 @@ int main(int argc, char *argv[])
                 case 'f':
                     find_full = 1;
                     break;
-		case 'l':
-		    use_lessmem = 1;
-		    break;
+                case 'l':
+                    use_lessmem = 1;
+                    break;
                 default:
                     unknown = 1;
                     break;
@@ -78,13 +79,15 @@ int main(int argc, char *argv[])
         printf("  outlets.shp\tInput outlets Shapefile\n");
         printf("  id_col\tID column\n");
         printf("  output.ext\tOutput longest flow paths Shapefile\n");
-        printf("  \t\tOutput text file for outlet rows and columns with -o\n");
+        printf
+            ("  \t\tOutput text file for outlet rows and columns with -o\n");
         exit(print_usage == 1 ? EXIT_SUCCESS : EXIT_FAILURE);
     }
 
-    if (find_full && use_lessmem){
-	fprintf(stderr, "Cannot calculate full longest flow paths with less memory\n");
-	exit(EXIT_FAILURE);
+    if (find_full && use_lessmem) {
+        fprintf(stderr,
+                "Cannot calculate full longest flow paths with less memory\n");
+        exit(EXIT_FAILURE);
     }
 
     GDALAllRegister();
@@ -125,7 +128,8 @@ int main(int argc, char *argv[])
                timeval_diff(NULL, &end_time, &start_time));
     }
     else {
-        printf("Calculating longest flow paths...\n");
+        printf("Finding longest flow paths using %d thread(s)...\n",
+               omp_get_num_threads());
         gettimeofday(&start_time, NULL);
         melfp(dir_map, outlet_l, find_full, use_lessmem);
         gettimeofday(&end_time, NULL);
