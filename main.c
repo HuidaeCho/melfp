@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
         printf("  fdr.tif\tInput flow direction GeoTIFF\n");
         printf("  outlets.shp\tInput outlets Shapefile\n");
         printf("  id_col\tID column\n");
-        printf("  output.ext\tOutput longest flow paths Shapefile\n");
+        printf("  output.ext\tOutput longest flow path head coordinatess (TODO: Shapefile)\n");
         printf
             ("  \t\tOutput text file for outlet rows and columns with -o\n");
         exit(print_usage == 1 ? EXIT_SUCCESS : EXIT_FAILURE);
