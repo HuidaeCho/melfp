@@ -128,6 +128,8 @@ int main(int argc, char *argv[])
                timeval_diff(NULL, &end_time, &start_time));
     }
     else {
+#pragma omp parallel
+#pragma omp single
         printf("Finding longest flow paths using %d thread(s)...\n",
                omp_get_num_threads());
         gettimeofday(&start_time, NULL);
