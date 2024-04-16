@@ -1,12 +1,20 @@
-CFLAGS=-Wall -Werror -O3 -fopenmp
+ifeq ($(OS),Windows_NT)
+	CFLAGS=-Wall -Werror -O3 -fopenmp -I/c/OSGeo4W/include
+	GDALLIBS=/c/OSGeo4W/lib/gdal_i.lib
+	EXT=.exe
+else
+	CFLAGS=-Wall -Werror -O3 -fopenmp
+	GDALLIBS=`gdal-config --libs`
+	EXT=
+endif
 LDFLAGS=-O3 -fopenmp
 
-all: melfp
+all: melfp$(EXT)
 
 clean:
 	$(RM) *.o
 
-melfp: \
+melfp$(EXT): \
 	main.o \
 	timeval_diff.o \
 	raster.o \
@@ -17,7 +25,7 @@ melfp: \
 	lfp.o \
 	lfp_lessmem.o \
 	heads.o
-	$(CC) $(LDFLAGS) -o $@ $^ `gdal-config --libs`
+	$(CC) $(LDFLAGS) -o $@ $^ $(GDALLIBS)
 
 *.o: global.h
 lfp*.o: lfp_funcs.h
