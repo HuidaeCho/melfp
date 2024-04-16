@@ -4,7 +4,7 @@
 
 void init_outlet_list(struct outlet_list *ol)
 {
-    ol->nalloc = ol->n;
+    ol->nalloc = ol->n = 0;
     ol->row = ol->col = NULL;
     ol->id = NULL;
 #ifndef USE_LESS_MEMORY
