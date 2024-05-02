@@ -6,7 +6,7 @@ else
 	GDAL_LIBS=`gdal-config --libs`
 endif
 CFLAGS=-Wall -Werror -O3 -fopenmp $(GDAL_CFLAGS)
-LDFLAGS=-O3 -fopenmp -lm $(GDAL_LIBS)
+LDFLAGS=-O3 -fopenmp -lm
 
 all: melfp$(EXT)
 
@@ -24,7 +24,7 @@ melfp$(EXT): \
 	lfp.o \
 	lfp_lessmem.o \
 	heads.o
-	$(CC) $(LDFLAGS) -o $@ $^
+	$(CC) $(LDFLAGS) -o $@ $^ $(GDAL_LIBS)
 
 *.o: global.h raster.h
 lfp*.o: lfp_funcs.h
