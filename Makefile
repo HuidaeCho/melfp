@@ -27,5 +27,5 @@ melfp$(EXT): \
 	heads.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(GDALLIBS)
 
-*.o: global.h
+*.o: global.h raster.h
 lfp*.o: lfp_funcs.h
