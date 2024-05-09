@@ -1,3 +1,3 @@
 # Memory-Efficient Longest Flow Path (MELFP)
 
-Part of Memory-efficient Input Drainage paths Analysis System (MIDAS)
+Part of the Memory-Efficient I/O-Improved DEM Analysis System (MIDAS)
