@@ -10,6 +10,7 @@
 #define LFP lfp_lessmem
 #else
 #define LFP lfp
+#if 1
 #define SIZE ((((size_t)nrows * ncols) >> 2) + ((((size_t)nrows * ncols) & 3) != 0))
 #define DONE(row, col) done[INDEX(row, col) >> 2]
 #define BIT0(row, col) (1 << ((INDEX(row, col) & 3) << 1))
@@ -18,6 +19,14 @@
 #define IS_OUTLET(row, col) (DONE(row, col) & BIT1(row, col))
 #define SET_DONE(row, col) do { DONE(row, col) |= BIT0(row, col); } while(0)
 #define IS_NOTDONE(row, col) !(DONE(row, col) & (BIT0(row, col) | BIT1(row, col)))
+#else
+#define SIZE ((size_t)nrows * ncols)
+#define DONE(row, col) done[INDEX(row, col)]
+#define SET_OUTLET(row, col) do { DONE(row, col) |= 1; } while(0)
+#define IS_OUTLET(row, col) (DONE(row, col) & 1)
+#define SET_DONE(row, col) do { DONE(row, col) |= 2; } while(0)
+#define IS_NOTDONE(row, col) !(DONE(row, col) & 3)
+#endif
 static char *done;
 #endif
 
