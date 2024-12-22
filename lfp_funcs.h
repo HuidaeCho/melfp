@@ -8,6 +8,9 @@
 
 #ifdef USE_LESS_MEMORY
 #define LFP lfp_lessmem
+static unsigned char *outlet_dirs;
+
+#define IS_OUTLET(row, col) !DIR(row, col)
 #else
 #define LFP lfp
 #if 1
@@ -30,6 +33,19 @@
 static char *done;
 #endif
 
+/* Relative row, col, and direction to the center in order of
+ * E S W N SE SW NW NE */
+static int nbr_rcd[8][3] = {
+    {0, 1, W},
+    {1, 0, N},
+    {0, -1, E},
+    {-1, 0, S},
+    {1, 1, NW},
+    {1, -1, NE},
+    {-1, -1, SE},
+    {-1, 1, SW}
+};
+
 struct cell
 {
     int row;
@@ -49,9 +65,7 @@ static int nrows, ncols;
 
 static void trace_up(struct raster_map *, int, int, int, double *,
                      struct point_list *, int, int, struct cell_stack *);
-#ifndef USE_LESS_MEMORY
 static void find_full_lfp(struct raster_map *, struct outlet_list *);
-#endif
 static void init_up_stack(struct cell_stack *);
 static void free_up_stack(struct cell_stack *);
 static void push_up(struct cell_stack *, struct cell *);
@@ -62,26 +76,24 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
 {
     int i;
 
-#ifdef USE_LESS_MEMORY
-    if (find_full)
-        /* does not support */
-        return;
-#endif
-
     nrows = dir_map->nrows;
     ncols = dir_map->ncols;
 
-#ifndef USE_LESS_MEMORY
+#ifdef USE_LESS_MEMORY
+    outlet_dirs = calloc(outlet_l->n, sizeof *outlet_dirs);
+#else
     done = calloc(SIZE, sizeof *done);
 #endif
 
 #pragma omp parallel for schedule(dynamic)
-    for (i = 0; i < outlet_l->n; i++)
+    for (i = 0; i < outlet_l->n; i++) {
 #ifdef USE_LESS_MEMORY
+        outlet_dirs[i] = DIR(outlet_l->row[i], outlet_l->col[i]);
         DIR(outlet_l->row[i], outlet_l->col[i]) = 0;
 #else
         SET_OUTLET(outlet_l->row[i], outlet_l->col[i]);
 #endif
+    }
 
     /* loop through all outlets and delineate the subwatershed for each */
 #pragma omp parallel for schedule(dynamic)
@@ -97,10 +109,28 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
         free_up_stack(&up_stack);
     }
 
-#ifndef USE_LESS_MEMORY
-    if (find_full)
-        find_full_lfp(dir_map, outlet_l);
+    if (find_full) {
+#ifdef USE_LESS_MEMORY
+        int r, c;
 
+        /* if 5 was added previously (multiple bits), recover directions */
+#pragma omp parallel for schedule(dynamic)
+        for (r = 0; r < nrows; r++)
+            for (c = 0; c < ncols; c++) {
+                if (!IS_DIR_NULL(r, c) && DIR(r, c) & (DIR(r, c) - 1))
+                    DIR(r, c) -= 5;
+            }
+#endif
+        find_full_lfp(dir_map, outlet_l);
+    }
+
+#ifdef USE_LESS_MEMORY
+    /* recover outlet directions */
+#pragma omp parallel for schedule(dynamic)
+    for (i = 0; i < outlet_l->n; i++)
+        DIR(outlet_l->row[i], outlet_l->col[i]) = outlet_dirs[i];
+    free(outlet_dirs);
+#else
     free(done);
 #endif
 }
@@ -109,42 +139,40 @@ static void trace_up(struct raster_map *dir_map, int row, int col, int id,
                      double *lflen, struct point_list *head_pl, int northo,
                      int ndia, struct cell_stack *up_stack)
 {
-    int i, j;
+    int i;
     int nup = 0;
-    int row_next = -1, col_next = -1;
+    int next_row = -1, next_col = -1;
     int ortho = 0, dia = 0;
 
-    for (i = -1; i <= 1; i++) {
+    for (i = 0; i < 8; i++) {
+        int nbr_row = row + nbr_rcd[i][0];
+        int nbr_col = col + nbr_rcd[i][1];
+
         /* skip edge cells */
-        if (row + i < 0 || row + i >= nrows)
+        if (nbr_row < 0 || nbr_row >= nrows || nbr_col < 0 ||
+            nbr_col >= ncols)
             continue;
 
-        for (j = -1; j <= 1; j++) {
-            /* skip the current and edge cells */
-            if ((i == 0 && j == 0) || col + j < 0 || col + j >= ncols)
-                continue;
-
-            /* if a neighbor cell flows into the current cell, trace up
-             * further; we need to check if that neighbor cell has already been
-             * processed because we don't want to misinterpret a subwatershed
-             * ID as a direction; remember we're overwriting dir_map so it can
-             * have both directions and subwatershed IDs */
-            if (DIR(row + i, col + j) == dir_checks[i + 1][j + 1]
+        /* if a neighbor cell flows into the current cell, trace up further; we
+         * need to check if that neighbor cell has already been processed
+         * because we don't want to misinterpret a subwatershed ID as a
+         * direction; remember we're overwriting dir_map so it can have both
+         * directions and subwatershed IDs */
+        if (DIR(nbr_row, nbr_col) == nbr_rcd[i][2]
 #ifndef USE_LESS_MEMORY
-                && IS_NOTDONE(row + i, col + j)
+            && IS_NOTDONE(nbr_row, nbr_col)
 #endif
-                && ++nup == 1) {
-                /* climb up only to this cell at this time */
-                row_next = row + i;
-                col_next = col + j;
-                ortho = i * j == 0;
-                dia = !ortho;
+            && ++nup == 1) {
+            /* climb up only to this cell at this time */
+            next_row = nbr_row;
+            next_col = nbr_col;
+            ortho = i < 4;
+            dia = !ortho;
 #ifdef USE_LESS_MEMORY
-                DIR(row_next, col_next) = 0;
+            DIR(next_row, next_col) += 5;
 #else
-                SET_DONE(row_next, col_next);
+            SET_DONE(next_row, next_col);
 #endif
-            }
         }
     }
 
@@ -166,8 +194,8 @@ static void trace_up(struct raster_map *dir_map, int row, int col, int id,
             return;
 
         up = pop_up(up_stack);
-        row_next = up.row;
-        col_next = up.col;
+        next_row = up.row;
+        next_col = up.col;
         northo = up.northo;
         ndia = up.ndia;
     }
@@ -184,11 +212,10 @@ static void trace_up(struct raster_map *dir_map, int row, int col, int id,
 
     /* use gcc -O2 or -O3 flags for tail-call optimization
      * (-foptimize-sibling-calls) */
-    trace_up(dir_map, row_next, col_next, id, lflen, head_pl, northo + ortho,
+    trace_up(dir_map, next_row, next_col, id, lflen, head_pl, northo + ortho,
              ndia + dia, up_stack);
 }
 
-#ifndef USE_LESS_MEMORY
 static void find_full_lfp(struct raster_map *dir_map,
                           struct outlet_list *outlet_l)
 {
@@ -198,10 +225,17 @@ static void find_full_lfp(struct raster_map *dir_map,
 #pragma omp parallel for schedule(dynamic)
     for (i = 0; i < outlet_l->n; i++) {
         int r = outlet_l->row[i], c = outlet_l->col[i];
+        unsigned char dir;
         int northo = 0, ndia = 0;
 
+#ifdef USE_LESS_MEMORY
+        dir = outlet_dirs[i];
+#else
+        dir = DIR(r, c);
+#endif
+
         do {
-            switch (DIR(r, c)) {
+            switch (dir) {
             case NE:
                 r--;
                 c++;
@@ -239,6 +273,7 @@ static void find_full_lfp(struct raster_map *dir_map,
                 northo++;
                 break;
             }
+            dir = DIR(r, c);
         } while (r >= 0 && r < nrows && c >= 0 && c < ncols &&
                  !IS_DIR_NULL(r, c) && !IS_OUTLET(r, c));
 
@@ -287,7 +322,6 @@ static void find_full_lfp(struct raster_map *dir_map,
         }
     }
 }
-#endif
 
 static void init_up_stack(struct cell_stack *up_stack)
 {

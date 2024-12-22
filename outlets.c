@@ -4,7 +4,7 @@
 #include "global.h"
 
 struct outlet_list *read_outlets(char *outlets_path, char *id_col,
-                                 struct raster_map *dir_map)
+                                 struct raster_map *dir_map, int find_full)
 {
     struct outlet_list *outlet_l = malloc(sizeof *outlet_l);
     GDALDatasetH dataset;
@@ -54,7 +54,7 @@ struct outlet_list *read_outlets(char *outlets_path, char *id_col,
             /* if the outlet is outside the computational region, skip */
             if (row >= 0 && row < dir_map->nrows && col >= 0 &&
                 col < dir_map->ncols)
-                add_outlet(outlet_l, row, col, id);
+                add_outlet(outlet_l, row, col, id, find_full);
             else
                 printf
                     ("Skip outlet %d at (%d, %d) outside the current region\n",

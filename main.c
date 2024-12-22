@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
         printf("\n");
         printf("  -o\t\tWrite outlet rows and columns, and exit\n");
         printf("  -f\t\tFind full longest flow paths\n");
-        printf("  -l\t\tUse less memory (cannot be used with -f)\n");
+        printf("  -l\t\tUse less memory\n");
         printf("  fdr.tif\tInput flow direction GeoTIFF\n");
         printf("  outlets.shp\tInput outlets Shapefile\n");
         printf("  id_col\tID column\n");
@@ -83,12 +83,6 @@ int main(int argc, char *argv[])
         printf
             ("  \t\tOutput text file for outlet rows and columns with -o\n");
         exit(print_usage == 1 ? EXIT_SUCCESS : EXIT_FAILURE);
-    }
-
-    if (find_full && use_lessmem) {
-        fprintf(stderr,
-                "Cannot calculate full longest flow paths with less memory\n");
-        exit(EXIT_FAILURE);
     }
 
     GDALAllRegister();
@@ -106,7 +100,7 @@ int main(int argc, char *argv[])
 
     printf("Reading outlets <%s>...\n", outlets_path);
     gettimeofday(&start_time, NULL);
-    if (!(outlet_l = read_outlets(outlets_path, id_col, dir_map))) {
+    if (!(outlet_l = read_outlets(outlets_path, id_col, dir_map, find_full))) {
         fprintf(stderr, "%s: Failed to read outlets\n", outlets_path);
         exit(EXIT_FAILURE);
     }

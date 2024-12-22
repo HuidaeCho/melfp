@@ -28,11 +28,9 @@ struct outlet_list
     int nalloc, n;
     int *row, *col;
     int *id;
-#ifndef USE_LESS_MEMORY
     char *has_up;
     int *down;
     double *flen;
-#endif
     double *lflen;
     struct point_list *head_pl;
 };
@@ -66,7 +64,7 @@ long long timeval_diff(struct timeval *, struct timeval *, struct timeval *);
 void init_outlet_list(struct outlet_list *);
 void reset_outlet_list(struct outlet_list *);
 void free_outlet_list(struct outlet_list *);
-void add_outlet(struct outlet_list *, int, int, int);
+void add_outlet(struct outlet_list *, int, int, int, int);
 
 /* point_list.c */
 void init_point_list(struct point_list *);
@@ -75,7 +73,7 @@ void free_point_list(struct point_list *);
 void add_point(struct point_list *, int, int);
 
 /* outlets.c */
-struct outlet_list *read_outlets(char *, char *, struct raster_map *);
+struct outlet_list *read_outlets(char *, char *, struct raster_map *, int);
 int write_outlets(const char *, struct outlet_list *);
 
 /* melfp.c */
