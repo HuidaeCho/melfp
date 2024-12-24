@@ -220,6 +220,9 @@ static void find_full_lfp(struct raster_map *dir_map,
     int i, j;
     int found_down = 0;
 
+    if (outlet_l->n == 1)
+        return;
+
 #pragma omp parallel for schedule(dynamic)
     for (i = 0; i < outlet_l->n; i++) {
         int r = outlet_l->row[i], c = outlet_l->col[i];
