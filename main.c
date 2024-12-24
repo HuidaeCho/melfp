@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
         printf("  -o\t\tWrite outlet rows and columns, and exit\n");
         printf("  -f\t\tFind full longest flow paths\n");
         printf
-            ("  -l\t\tUse less memory and don't preserve input data (faster)\n");
+            ("  -l\t\tUse less memory and don't preserve input data (faster than -L)\n");
         printf("  -L\t\tUse less memory and preserve input data\n");
         printf("  fdr.tif\tInput flow direction GeoTIFF\n");
         printf("  outlets.shp\tInput outlets Shapefile\n");
