@@ -8,7 +8,10 @@ void melfp(struct raster_map *dir_map, struct outlet_list *outlet_l,
         lfp(dir_map, outlet_l, find_full);
         break;
     case 1:
-        lfp_lessmem(dir_map, outlet_l, find_full);
+        lfp_lessmem(dir_map, outlet_l, find_full, 0);
+        break;
+    case 2:
+        lfp_lessmem(dir_map, outlet_l, find_full, 1);
         break;
     }
 }

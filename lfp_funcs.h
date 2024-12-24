@@ -78,7 +78,11 @@ static void push_up(struct cell_stack *, struct cell *);
 static struct cell pop_up(struct cell_stack *);
 
 void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
-         int find_full)
+         int find_full
+#ifdef USE_LESS_MEMORY
+         , int preserve_dir
+#endif
+    )
 {
     int i;
 
@@ -115,7 +119,7 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
 
 #ifdef USE_LESS_MEMORY
     /* if 5 was added previously (multiple bits), recover directions */
-    {
+    if (find_full || preserve_dir) {
         int r, c;
 
 #pragma omp parallel for schedule(dynamic)
@@ -132,10 +136,12 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
 
 #ifdef USE_LESS_MEMORY
     /* recover outlet directions */
+    if (preserve_dir) {
 #pragma omp parallel for schedule(dynamic)
-    for (i = 0; i < outlet_l->n; i++)
-        DIR(outlet_l->row[i], outlet_l->col[i]) = outlet_dirs[i];
-    free(outlet_dirs);
+        for (i = 0; i < outlet_l->n; i++)
+            DIR(outlet_l->row[i], outlet_l->col[i]) = outlet_dirs[i];
+        free(outlet_dirs);
+    }
 #else
     free(done);
 #endif

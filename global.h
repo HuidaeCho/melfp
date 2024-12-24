@@ -83,7 +83,7 @@ void melfp(struct raster_map *, struct outlet_list *, int, int);
 void lfp(struct raster_map *, struct outlet_list *, int);
 
 /* lfp_lessmem.c */
-void lfp_lessmem(struct raster_map *, struct outlet_list *, int);
+void lfp_lessmem(struct raster_map *, struct outlet_list *, int, int);
 
 /* heads.c */
 int write_heads(const char *, const char *, struct outlet_list *,

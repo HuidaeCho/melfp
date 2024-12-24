@@ -36,7 +36,11 @@ int main(int argc, char *argv[])
                     find_full = 1;
                     break;
                 case 'l':
-                    use_lessmem = 1;
+                    if (!use_lessmem)
+                        use_lessmem = 1;
+                    break;
+                case 'L':
+                    use_lessmem = 2;
                     break;
                 default:
                     unknown = 1;
@@ -74,7 +78,9 @@ int main(int argc, char *argv[])
         printf("\n");
         printf("  -o\t\tWrite outlet rows and columns, and exit\n");
         printf("  -f\t\tFind full longest flow paths\n");
-        printf("  -l\t\tUse less memory\n");
+        printf
+            ("  -l\t\tUse less memory and don't preserve input data (faster)\n");
+        printf("  -L\t\tUse less memory and preserve input data\n");
         printf("  fdr.tif\tInput flow direction GeoTIFF\n");
         printf("  outlets.shp\tInput outlets Shapefile\n");
         printf("  id_col\tID column\n");
