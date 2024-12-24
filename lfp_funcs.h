@@ -8,9 +8,9 @@
 
 #ifdef USE_LESS_MEMORY
 #define LFP lfp_lessmem
-static unsigned char *outlet_dirs;
-
+#define SET_OUTLET(row, col) do { DIR(row, col) = 0; } while(0)
 #define IS_OUTLET(row, col) !DIR(row, col)
+static unsigned char *outlet_dirs;
 #else
 #define LFP lfp
 #if 1
@@ -89,10 +89,8 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
     for (i = 0; i < outlet_l->n; i++) {
 #ifdef USE_LESS_MEMORY
         outlet_dirs[i] = DIR(outlet_l->row[i], outlet_l->col[i]);
-        DIR(outlet_l->row[i], outlet_l->col[i]) = 0;
-#else
-        SET_OUTLET(outlet_l->row[i], outlet_l->col[i]);
 #endif
+        SET_OUTLET(outlet_l->row[i], outlet_l->col[i]);
     }
 
     /* loop through all outlets and delineate the subwatershed for each */
