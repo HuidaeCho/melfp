@@ -114,10 +114,10 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
     }
 
 #ifdef USE_LESS_MEMORY
+    /* if 5 was added previously (multiple bits), recover directions */
     {
         int r, c;
 
-        /* if 5 was added previously (multiple bits), recover directions */
 #pragma omp parallel for schedule(dynamic)
         for (r = 0; r < nrows; r++)
             for (c = 0; c < ncols; c++) {
@@ -159,11 +159,7 @@ static void trace_up(struct raster_map *dir_map, int row, int col, int id,
             nbr_col >= ncols)
             continue;
 
-        /* if a neighbor cell flows into the current cell, trace up further; we
-         * need to check if that neighbor cell has already been processed
-         * because we don't want to misinterpret a subwatershed ID as a
-         * direction; remember we're overwriting dir_map so it can have both
-         * directions and subwatershed IDs */
+        /* if a neighbor cell flows into the current cell, trace up further */
         if (DIR(nbr_row, nbr_col) == nbr_rcd[i][2]
 #ifndef USE_LESS_MEMORY
             && IS_NOTDONE(nbr_row, nbr_col)
