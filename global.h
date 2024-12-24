@@ -41,22 +41,6 @@ struct point_list
     int *row, *col;
 };
 
-#ifdef _MAIN_C_
-#define GLOBAL
-#else
-#define GLOBAL extern
-#endif
-
-GLOBAL int dir_checks[3][3]
-#ifdef _MAIN_C_
-    = {
-    {SE, S, SW},
-    {E, 0, W},
-    {NE, N, NW}
-}
-#endif
-;
-
 /* timeval_diff.c */
 long long timeval_diff(struct timeval *, struct timeval *, struct timeval *);
 
