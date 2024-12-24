@@ -113,8 +113,8 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
         free_up_stack(&up_stack);
     }
 
-    if (find_full) {
 #ifdef USE_LESS_MEMORY
+    {
         int r, c;
 
         /* if 5 was added previously (multiple bits), recover directions */
@@ -124,9 +124,11 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
                 if (IS_RECOVERABLE(r, c))
                     RECOVER(r, c);
             }
-#endif
-        find_full_lfp(dir_map, outlet_l);
     }
+#endif
+
+    if (find_full)
+        find_full_lfp(dir_map, outlet_l);
 
 #ifdef USE_LESS_MEMORY
     /* recover outlet directions */
