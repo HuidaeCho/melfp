@@ -140,8 +140,8 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
 #pragma omp parallel for schedule(dynamic)
         for (i = 0; i < outlet_l->n; i++)
             DIR(outlet_l->row[i], outlet_l->col[i]) = outlet_dirs[i];
-        free(outlet_dirs);
     }
+    free(outlet_dirs);
 #else
     free(done);
 #endif
