@@ -10,18 +10,24 @@
 #define LFP lfp_lessmem
 #define SET_OUTLET(row, col) do { DIR(row, col) = 0; } while(0)
 #define IS_OUTLET(row, col) !DIR(row, col)
+#define SET_DONE(row, col) do { DIR(row, col) += 5; } while(0)
+#define IS_RECOVERABLE(row, col) (!IS_DIR_NULL(row, col) && \
+        DIR(row, col) & (DIR(row, col) - 1))
+#define RECOVER(row, col) do { DIR(row, col) -= 5; } while(0)
 static unsigned char *outlet_dirs;
 #else
 #define LFP lfp
 #if 1
-#define SIZE ((((size_t)nrows * ncols) >> 2) + ((((size_t)nrows * ncols) & 3) != 0))
+#define SIZE ((((size_t)nrows * ncols) >> 2) + \
+        ((((size_t)nrows * ncols) & 3) != 0))
 #define DONE(row, col) done[INDEX(row, col) >> 2]
 #define BIT0(row, col) (1 << ((INDEX(row, col) & 3) << 1))
 #define BIT1(row, col) (BIT0(row, col) << 1)
 #define SET_OUTLET(row, col) do { DONE(row, col) |= BIT1(row, col); } while(0)
 #define IS_OUTLET(row, col) (DONE(row, col) & BIT1(row, col))
 #define SET_DONE(row, col) do { DONE(row, col) |= BIT0(row, col); } while(0)
-#define IS_NOTDONE(row, col) !(DONE(row, col) & (BIT0(row, col) | BIT1(row, col)))
+#define IS_NOTDONE(row, col) !(DONE(row, col) & \
+        (BIT0(row, col) | BIT1(row, col)))
 #else
 #define SIZE ((size_t)nrows * ncols)
 #define DONE(row, col) done[INDEX(row, col)]
@@ -115,8 +121,8 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
 #pragma omp parallel for schedule(dynamic)
         for (r = 0; r < nrows; r++)
             for (c = 0; c < ncols; c++) {
-                if (!IS_DIR_NULL(r, c) && DIR(r, c) & (DIR(r, c) - 1))
-                    DIR(r, c) -= 5;
+                if (IS_RECOVERABLE(r, c))
+                    RECOVER(r, c);
             }
 #endif
         find_full_lfp(dir_map, outlet_l);
@@ -166,11 +172,7 @@ static void trace_up(struct raster_map *dir_map, int row, int col, int id,
             next_col = nbr_col;
             ortho = i < 4;
             dia = !ortho;
-#ifdef USE_LESS_MEMORY
-            DIR(next_row, next_col) += 5;
-#else
             SET_DONE(next_row, next_col);
-#endif
         }
     }
 
