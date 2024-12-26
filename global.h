@@ -28,11 +28,13 @@ struct outlet_list
     int nalloc, n;
     int *row, *col;
     int *id;
+    int *northo, *ndia;
+    double *lflen;
+    struct point_list *head_pl;
+    /* for full lfp */
     char *has_up;
     int *down;
     double *flen;
-    double *lflen;
-    struct point_list *head_pl;
 };
 
 struct point_list
