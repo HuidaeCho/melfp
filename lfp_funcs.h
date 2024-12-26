@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <math.h>
+#include <omp.h>
 #include "global.h"
 
 #define USE_TASKING_FOR_LAST_OUTLET
@@ -42,7 +43,7 @@ static char *done;
 #endif
 
 #ifdef USE_TASKING_FOR_LAST_OUTLET
-static int remaining_outlets;
+static int remaining_nodes;
 #endif
 
 /* Relative row, col, and direction to the center in order of
@@ -76,6 +77,8 @@ struct cell_stack
 static int nrows, ncols;
 
 #ifdef USE_TASKING_FOR_LAST_OUTLET
+static int num_tasks;
+
 #define TRACE_UP_RETURN int
 #else
 #define TRACE_UP_RETURN void
@@ -118,15 +121,18 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
     }
 
 #ifdef USE_TASKING_FOR_LAST_OUTLET
-    remaining_outlets = outlet_l->n;
+#pragma omp parallel
+#pragma omp single
+    num_tasks = omp_get_num_threads() - 1;
+    remaining_nodes = outlet_l->n;
 #endif
 
     /* loop through all outlets and delineate the subwatershed for each */
 #pragma omp parallel for schedule(dynamic)
     for (i = 0; i < outlet_l->n; i++) {
-        struct cell_stack up_stack;
+        struct cell_stack *up_stack = malloc(sizeof *up_stack);
 
-        init_up_stack(&up_stack);
+        init_up_stack(up_stack);
 
         /* trace up flow directions */
 #ifdef USE_TASKING_FOR_LAST_OUTLET
@@ -136,66 +142,74 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
 #endif
                trace_up(dir_map, outlet_l->row[i], outlet_l->col[i], 0, 0,
                         &outlet_l->northo[i], &outlet_l->ndia[i],
-                        &outlet_l->lflen[i], &outlet_l->head_pl[i], &up_stack)
+                        &outlet_l->lflen[i], &outlet_l->head_pl[i], up_stack)
 #ifdef USE_TASKING_FOR_LAST_OUTLET
             ) {
-            remaining_outlets--;
-            /* calculate upstream longest flow paths at branching cells,
-             * compare their lengths, and add them if necessary */
-            while (up_stack.n) {
-                struct cell up;
+            do {
+                remaining_nodes = up_stack->n;
+                /* calculate upstream longest flow paths at branching cells,
+                 * compare their lengths, and add them if necessary */
+                while (up_stack->n) {
+                    struct cell up;
 
-                up = pop_up(&up_stack);
+                    up = pop_up(up_stack);
 
-#pragma omp task
-                {
-                    int row = up.row, col = up.col;
-                    int down_northo = up.northo, down_ndia = up.ndia;
-                    int northo, ndia;
-                    double lflen = 0;
-                    struct point_list head_pl;
-                    struct cell_stack task_up_stack;
-
-                    init_point_list(&head_pl);
-                    init_up_stack(&task_up_stack);
-
-                    /* calculate upstream longest flow paths from a branching
-                     * node */
-                    trace_up(dir_map, row, col, down_northo, down_ndia,
-                             &northo, &ndia, &lflen, &head_pl,
-                             &task_up_stack);
-
-                    free_up_stack(&task_up_stack);
-
-                    /* this block is critical to avoid race conditions when
-                     * updating outlet_l->*[i] values */
-#pragma omp critical
+#pragma omp task shared(up_stack)
                     {
-                        /* if its longest flow length is longer than or equal
-                         * to the previously found one, add new longest flow
-                         * paths */
-                        if (lflen >= outlet_l->lflen[i]) {
-                            int j;
+                        int row = up.row, col = up.col;
+                        int down_northo = up.northo, down_ndia = up.ndia;
+                        int northo, ndia;
+                        double lflen = 0;
+                        struct point_list head_pl;
+                        struct cell_stack *task_up_stack =
+                            malloc(sizeof *task_up_stack);
 
-                            /* if it is longer, reomve all previous longest
-                             * flow paths first */
-                            if (lflen > outlet_l->lflen[i]) {
-                                outlet_l->northo[i] = northo;
-                                outlet_l->ndia[i] = ndia;
-                                outlet_l->lflen[i] = lflen;
-                                reset_point_list(&outlet_l->head_pl[i]);
-                            }
+                        init_point_list(&head_pl);
+                        init_up_stack(task_up_stack);
 
-                            /* add all new longest flow paths */
-                            for (j = 0; j < head_pl.n; j++)
-                                add_point(&outlet_l->head_pl[i],
-                                          head_pl.row[j], head_pl.col[j]);
+                        /* calculate upstream longest flow paths from a branching
+                         * node */
+                        if (trace_up
+                            (dir_map, row, col, down_northo, down_ndia,
+                             &northo, &ndia, &lflen, &head_pl,
+                             task_up_stack)) {
+                            free_up_stack(up_stack);
+                            up_stack = task_up_stack;
                         }
-                    }
+                        else
+                            free_up_stack(task_up_stack);
 
-                    free_point_list(&head_pl);
+                        /* this block is critical to avoid race conditions when
+                         * updating outlet_l->*[i] values */
+#pragma omp critical
+                        {
+                            /* if its longest flow length is longer than or
+                             * equal to the previously found one, add new
+                             * longest flow paths */
+                            if (lflen >= outlet_l->lflen[i]) {
+                                int j;
+
+                                /* if it is longer, reomve all previous longest
+                                 * flow paths first */
+                                if (lflen > outlet_l->lflen[i]) {
+                                    outlet_l->northo[i] = northo;
+                                    outlet_l->ndia[i] = ndia;
+                                    outlet_l->lflen[i] = lflen;
+                                    reset_point_list(&outlet_l->head_pl[i]);
+                                }
+
+                                /* add all new longest flow paths */
+                                for (j = 0; j < head_pl.n; j++)
+                                    add_point(&outlet_l->head_pl[i],
+                                              head_pl.row[j], head_pl.col[j]);
+                            }
+                        }
+
+                        free_point_list(&head_pl);
+                    }
                 }
-            }
+#pragma omp taskwait
+            } while (up_stack->n);
         }
 #endif
         /* XXX: work around an indent bug
@@ -205,7 +219,7 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
          * doesn't work */
         ;
 
-        free_up_stack(&up_stack);
+        free_up_stack(up_stack);
     }
 
 #ifdef USE_LESS_MEMORY
@@ -291,9 +305,8 @@ static TRACE_UP_RETURN trace_up(struct raster_map *dir_map, int row, int col,
 
         if (!up_stack->n) {
 #ifdef USE_TASKING_FOR_LAST_OUTLET
-            if (remaining_outlets > 0)
 #pragma omp atomic
-                remaining_outlets--;
+            remaining_nodes--;
             return 0;
 #else
             return;
@@ -301,7 +314,7 @@ static TRACE_UP_RETURN trace_up(struct raster_map *dir_map, int row, int col,
         }
 
 #ifdef USE_TASKING_FOR_LAST_OUTLET
-        if (remaining_outlets == 1)
+        if (remaining_nodes == 1 && up_stack->n >= num_tasks)
             return 1;
 #endif
 
@@ -323,7 +336,7 @@ static TRACE_UP_RETURN trace_up(struct raster_map *dir_map, int row, int col,
     }
 
 #ifdef USE_TASKING_FOR_LAST_OUTLET
-    if (remaining_outlets == 1) {
+    if (remaining_nodes == 1 && up_stack->n >= num_tasks - 1) {
         struct cell up;
 
         up.row = next_row;
