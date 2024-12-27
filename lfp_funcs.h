@@ -167,8 +167,8 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
                         init_point_list(&head_pl);
                         init_up_stack(task_up_stack);
 
-                        /* calculate upstream longest flow paths from a branching
-                         * node */
+                        /* calculate upstream longest flow paths from a
+                         * branching node */
                         if (trace_up
                             (dir_map, row, col, down_northo, down_ndia,
                              &northo, &ndia, &lflen, &head_pl,
