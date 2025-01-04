@@ -20,9 +20,9 @@ melfp$(EXT): \
 	outlet_list.o \
 	point_list.o \
 	outlets.o \
-	melfp.o \
 	lfp.o \
 	lfp_lessmem.o \
+	lfp_moremem.o \
 	heads.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(GDAL_LIBS)
 

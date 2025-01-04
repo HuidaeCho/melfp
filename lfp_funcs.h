@@ -19,7 +19,7 @@
 #define RECOVER(row, col) do { DIR(row, col) -= 5; } while(0)
 static unsigned char *outlet_dirs;
 #else
-#define LFP lfp
+#define LFP lfp_moremem
 #ifdef USE_BITS_FOR_MORE_MEMORY
 #define SIZE ((((size_t)nrows * ncols) >> 2) + \
         ((((size_t)nrows * ncols) & 3) != 0))

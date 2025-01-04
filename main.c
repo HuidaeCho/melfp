@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
         printf("Finding longest flow paths using %d thread(s)...\n",
                omp_get_num_threads());
         gettimeofday(&start_time, NULL);
-        melfp(dir_map, outlet_l, find_full, use_lessmem);
+        lfp(dir_map, outlet_l, find_full, use_lessmem);
         gettimeofday(&end_time, NULL);
         printf
             ("Computation time for longest flow paths: %lld microsec\n",

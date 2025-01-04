@@ -62,14 +62,14 @@ void add_point(struct point_list *, int, int);
 struct outlet_list *read_outlets(char *, char *, struct raster_map *, int);
 int write_outlets(const char *, struct outlet_list *);
 
-/* melfp.c */
-void melfp(struct raster_map *, struct outlet_list *, int, int);
-
 /* lfp.c */
-void lfp(struct raster_map *, struct outlet_list *, int);
+void lfp(struct raster_map *, struct outlet_list *, int, int);
 
 /* lfp_lessmem.c */
 void lfp_lessmem(struct raster_map *, struct outlet_list *, int, int);
+
+/* lfp_moremem.c */
+void lfp_moremem(struct raster_map *, struct outlet_list *, int);
 
 /* heads.c */
 int write_heads(const char *, const char *, struct outlet_list *,
