@@ -171,13 +171,8 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
                          * branching node */
                         if (trace_up
                             (dir_map, row, col, down_northo, down_ndia,
-                             &northo, &ndia, &lflen, &head_pl,
-                             task_up_stack)) {
-                            free_up_stack(up_stack);
+                             &northo, &ndia, &lflen, &head_pl, task_up_stack))
                             up_stack = task_up_stack;
-                        }
-                        else
-                            free_up_stack(task_up_stack);
 
                         /* this block is critical to avoid race conditions when
                          * updating outlet_l->*[i] values */
@@ -218,8 +213,6 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
          * #endif
          * doesn't work */
         ;
-
-        free_up_stack(up_stack);
     }
 
 #ifdef USE_LESS_MEMORY
