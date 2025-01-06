@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
     if (print_usage) {
         if (print_usage == 2)
             printf("\n");
-        printf("Usage: melfp [-ofl] fdr.tif outlets.shp id_col output.ext\n");
+        printf("Usage: melfp [-ofl] [-s size] fdr.tif outlets.shp id_col output.ext\n");
         printf("\n");
         printf("  -o\t\tWrite outlet rows and columns, and exit\n");
         printf("  -f\t\tFind full longest flow paths\n");
@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
             ("  -l\t\tUse less memory and don't preserve input data (faster than -L)\n");
         printf("  -L\t\tUse less memory and preserve input data\n");
 #ifdef LOOP_THEN_TASK
-        printf("  -s\t\tTracing stack size (default %d)\n",
+        printf("  -s size\tTracing stack size (default %d)\n",
                tracing_stack_size);
 #endif
         printf("  fdr.tif\tInput flow direction GeoTIFF\n");
