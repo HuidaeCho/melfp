@@ -3,8 +3,6 @@
 #include <omp.h>
 #include "global.h"
 
-#define USE_TASKING_FOR_LAST_OUTLET
-
 #define INDEX(row, col) ((size_t)(row) * ncols + (col))
 #define DIR(row, col) dir_map->cells.byte[INDEX(row, col)]
 #define IS_DIR_NULL(row, col) (DIR(row, col) == dir_map->null_value)
@@ -42,10 +40,6 @@ static unsigned char *outlet_dirs;
 static char *done;
 #endif
 
-#ifdef USE_TASKING_FOR_LAST_OUTLET
-static int remaining_nodes;
-#endif
-
 /* Relative row, col, and direction to the center in order of
  * E S W N SE SW NW NE */
 static int nbr_rcd[8][3] = {
@@ -76,9 +70,7 @@ struct cell_stack
 
 static int nrows, ncols;
 
-#ifdef USE_TASKING_FOR_LAST_OUTLET
-static int num_tasks;
-
+#ifdef LOOP_THEN_TASK
 #define TRACE_UP_RETURN int
 #else
 #define TRACE_UP_RETURN void
@@ -120,13 +112,6 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
         SET_OUTLET(outlet_l->row[i], outlet_l->col[i]);
     }
 
-#ifdef USE_TASKING_FOR_LAST_OUTLET
-#pragma omp parallel
-#pragma omp single
-    num_tasks = omp_get_num_threads() - 1;
-    remaining_nodes = outlet_l->n;
-#endif
-
     /* loop through all outlets and delineate the subwatershed for each */
 #pragma omp parallel for schedule(dynamic)
     for (i = 0; i < outlet_l->n; i++) {
@@ -135,7 +120,7 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
         init_up_stack(up_stack);
 
         /* trace up flow directions */
-#ifdef USE_TASKING_FOR_LAST_OUTLET
+#ifdef LOOP_THEN_TASK
         /* if this outlet is the last one, use tasking for better load
          * balancing */
         if (
@@ -143,18 +128,18 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
                trace_up(dir_map, outlet_l->row[i], outlet_l->col[i], 0, 0,
                         &outlet_l->northo[i], &outlet_l->ndia[i],
                         &outlet_l->lflen[i], &outlet_l->head_pl[i], up_stack)
-#ifdef USE_TASKING_FOR_LAST_OUTLET
+#ifdef LOOP_THEN_TASK
             ) {
             do {
-                remaining_nodes = up_stack->n;
                 /* calculate upstream longest flow paths at branching cells,
                  * compare their lengths, and add them if necessary */
                 while (up_stack->n) {
                     struct cell up;
 
+#pragma omp critical
                     up = pop_up(up_stack);
 
-#pragma omp task shared(up_stack)
+#pragma omp task
                     {
                         int row = up.row, col = up.col;
                         int down_northo = up.northo, down_ndia = up.ndia;
@@ -171,8 +156,15 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
                          * branching node */
                         if (trace_up
                             (dir_map, row, col, down_northo, down_ndia,
-                             &northo, &ndia, &lflen, &head_pl, task_up_stack))
-                            up_stack = task_up_stack;
+                             &northo, &ndia, &lflen, &head_pl,
+                             task_up_stack)) {
+                            while (task_up_stack->n) {
+                                struct cell task_up = pop_up(task_up_stack);
+
+#pragma omp critical
+                                push_up(up_stack, &task_up);
+                            }
+                        }
 
                         /* this block is critical to avoid race conditions when
                          * updating outlet_l->*[i] values */
@@ -296,18 +288,15 @@ static TRACE_UP_RETURN trace_up(struct raster_map *dir_map, int row, int col,
             add_point(head_pl, row, col);
         }
 
-        if (!up_stack->n) {
-#ifdef USE_TASKING_FOR_LAST_OUTLET
-#pragma omp atomic
-            remaining_nodes--;
-            return 0;
-#else
-            return;
+        if (!up_stack->n)
+            return
+#ifdef LOOP_THEN_TASK
+                0
 #endif
-        }
+                ;
 
-#ifdef USE_TASKING_FOR_LAST_OUTLET
-        if (remaining_nodes == 1 && up_stack->n >= num_tasks)
+#ifdef LOOP_THEN_TASK
+        if (up_stack->n >= tracing_stack_size)
             return 1;
 #endif
 
@@ -328,8 +317,8 @@ static TRACE_UP_RETURN trace_up(struct raster_map *dir_map, int row, int col,
         push_up(up_stack, &up);
     }
 
-#ifdef USE_TASKING_FOR_LAST_OUTLET
-    if (remaining_nodes == 1 && up_stack->n >= num_tasks - 1) {
+#ifdef LOOP_THEN_TASK
+    if (up_stack->n >= tracing_stack_size - 1) {
         struct cell up;
 
         up.row = next_row;
@@ -344,7 +333,7 @@ static TRACE_UP_RETURN trace_up(struct raster_map *dir_map, int row, int col,
 
     /* use gcc -O2 or -O3 flags for tail-call optimization
      * (-foptimize-sibling-calls) */
-#ifdef USE_TASKING_FOR_LAST_OUTLET
+#ifdef LOOP_THEN_TASK
     return
 #endif
         trace_up(dir_map, next_row, next_col, down_northo + ortho,

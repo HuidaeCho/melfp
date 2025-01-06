@@ -4,6 +4,7 @@
 #include <string.h>
 #include <gdal.h>
 #include <cpl_conv.h>
+#include <math.h>
 #include <omp.h>
 #ifdef _MSC_VER
 #include <winsock2.h>
@@ -21,6 +22,15 @@ int main(int argc, char *argv[])
     struct raster_map *dir_map;
     struct outlet_list *outlet_l;
     struct timeval start_time, end_time;
+
+#ifdef LOOP_THEN_TASK
+    char *p;
+
+    if ((p = getenv("MELFP_TRACING_STACK_SIZE")))
+        tracing_stack_size = atoi(p);
+    else
+        tracing_stack_size = 1024 * 5;
+#endif
 
     for (i = 1; i < argc; i++) {
         if (argv[i][0] == '-') {
@@ -42,13 +52,24 @@ int main(int argc, char *argv[])
                 case 'L':
                     use_lessmem = 2;
                     break;
+#ifdef LOOP_THEN_TASK
+                case 's':
+                    if (i == argc - 1) {
+                        fprintf(stderr, "-%c: Missing tracing stack size\n",
+                                argv[i][j]);
+                        print_usage = 2;
+                        break;
+                    }
+                    tracing_stack_size = atoi(argv[++i]);
+                    break;
+#endif
                 default:
                     unknown = 1;
                     break;
                 }
             }
             if (unknown) {
-                fprintf(stderr, "%c: Unknown flag\n", argv[i][j]);
+                fprintf(stderr, "-%c: Unknown flag\n", argv[i][j]);
                 print_usage = 2;
                 break;
             }
@@ -81,6 +102,10 @@ int main(int argc, char *argv[])
         printf
             ("  -l\t\tUse less memory and don't preserve input data (faster than -L)\n");
         printf("  -L\t\tUse less memory and preserve input data\n");
+#ifdef LOOP_THEN_TASK
+        printf("  -s\t\tTracing stack size (default %d)\n",
+               tracing_stack_size);
+#endif
         printf("  fdr.tif\tInput flow direction GeoTIFF\n");
         printf("  outlets.shp\tInput outlets Shapefile\n");
         printf("  id_col\tID column\n");
@@ -131,8 +156,29 @@ int main(int argc, char *argv[])
     else {
 #pragma omp parallel
 #pragma omp single
-        printf("Finding longest flow paths using %d thread(s)...\n",
-               omp_get_num_threads());
+        {
+            size_t num_cells = (size_t)dir_map->nrows * dir_map->ncols;
+            int num_threads = omp_get_num_threads();
+
+            printf("Number of cells: %zu\n", num_cells);
+            printf("Number of outlets: %d\n", outlet_l->n);
+
+#ifdef LOOP_THEN_TASK
+            if (tracing_stack_size <= 0) {
+                printf
+                    ("Guessing tracing stack size using sqrt(nrows * ncols) / num_threads...\n");
+                tracing_stack_size =
+                    sqrt((size_t)dir_map->nrows * dir_map->ncols) /
+                    num_threads;
+            }
+
+            printf("Tracing stack size for loop-then-task: %d\n",
+                   tracing_stack_size);
+#endif
+            printf("Finding longest flow paths using %d thread(s)...\n",
+                   num_threads);
+        }
+
         gettimeofday(&start_time, NULL);
         lfp(dir_map, outlet_l, find_full, use_lessmem);
         gettimeofday(&end_time, NULL);
