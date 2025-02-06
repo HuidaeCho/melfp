@@ -78,6 +78,7 @@ int write_outlets(const char *, struct outlet_list *);
 void lfp(struct raster_map *, struct outlet_list *, int, int);
 
 /* lfp_lessmem.c */
+int convert_encoding(struct raster_map *, int *);
 void lfp_lessmem(struct raster_map *, struct outlet_list *, int, int);
 
 /* lfp_moremem.c */

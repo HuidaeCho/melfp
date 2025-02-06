@@ -1,11 +1,13 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <omp.h>
 #include "global.h"
 
 #define INDEX(row, col) ((size_t)(row) * ncols + (col))
+#define DIR_NULL dir_map->null_value
 #define DIR(row, col) dir_map->cells.byte[INDEX(row, col)]
-#define IS_DIR_NULL(row, col) (DIR(row, col) == dir_map->null_value)
+#define IS_DIR_NULL(row, col) (DIR(row, col) == DIR_NULL)
 
 #ifdef USE_LESS_MEMORY
 #define LFP lfp_lessmem
@@ -85,6 +87,41 @@ static void init_up_stack(struct cell_stack *);
 static void free_up_stack(struct cell_stack *);
 static void push_up(struct cell_stack *, struct cell *);
 static struct cell pop_up(struct cell_stack *);
+
+/* define this function once */
+#ifdef USE_LESS_MEMORY
+int convert_encoding(struct raster_map *dir_map, int *encoding)
+{
+    int ret = 0;
+    int row, col;
+    int internal_encoding[8] = { E, SE, S, SW, W, NW, N, NE };
+
+    nrows = dir_map->nrows;
+    ncols = dir_map->ncols;
+
+#pragma omp parallel for schedule(dynamic) private(col)
+    for (row = 0; row < nrows; row++) {
+        for (col = 0; col < ncols; col++) {
+            unsigned char dir = DIR(row, col);
+
+            if (dir != DIR_NULL) {
+                int i;
+
+                for (i = 0; i < 8 && dir != encoding[i]; i++) ;
+                if (i == 8) {
+                    fprintf(stderr, "%d: Invalid flow direction value\n",
+                            dir);
+                    ret = 1;
+                    break;
+                }
+                DIR(row, col) = internal_encoding[i];
+            }
+        }
+    }
+
+    return ret;
+}
+#endif
 
 void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
          int find_full

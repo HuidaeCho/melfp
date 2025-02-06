@@ -16,7 +16,9 @@
 int main(int argc, char *argv[])
 {
     int i;
-    int print_usage = 1, write_outlet = 0, find_full = 0, use_lessmem = 0;
+    int print_usage = 1, write_outlet = 0, find_full = 0, use_lessmem =
+        0, custom_encoding = 0;
+    int encoding[8];
     char *dir_path = NULL, *outlets_path = NULL, *id_col =
         NULL, *output_path = NULL;
     struct raster_map *dir_map;
@@ -51,6 +53,40 @@ int main(int argc, char *argv[])
                     break;
                 case 'L':
                     use_lessmem = 2;
+                    break;
+                case 'e':
+                    if (i == argc - 1) {
+                        fprintf(stderr, "-%c: Missing encoding\n",
+                                argv[i][j]);
+                        print_usage = 2;
+                        break;
+                    }
+                    if (strcmp(argv[++i], "power2") == 0) {
+                        custom_encoding = 0;
+                        break;
+                    }
+                    else if (strcmp(argv[i], "taudem") == 0) {
+                        int k;
+
+                        for (k = 1; k < 9; k++)
+                            encoding[k % 8] = 9 - k;
+                    }
+                    else if (strcmp(argv[i], "45degree") == 0) {
+                        int k;
+
+                        for (k = 0; k < 8; k++)
+                            encoding[k] = 8 - k;
+                    }
+                    else if (sscanf
+                             (argv[i], "%d,%d,%d,%d,%d,%d,%d,%d",
+                              &encoding[0], &encoding[1], &encoding[2],
+                              &encoding[3], &encoding[4], &encoding[5],
+                              &encoding[6], &encoding[7]) != 8) {
+                        fprintf(stderr, "%s: Invalid encoding\n", argv[i]);
+                        print_usage = 2;
+                        break;
+                    }
+                    custom_encoding = 1;
                     break;
 #ifdef LOOP_THEN_TASK
                 case 's':
@@ -95,13 +131,21 @@ int main(int argc, char *argv[])
     if (print_usage) {
         if (print_usage == 2)
             printf("\n");
-        printf("Usage: melfp [-ofl] [-s size] fdr.tif outlets.shp id_col output.ext\n");
+        printf
+            ("Usage: melfp [-ofl] [-s size] fdr.tif outlets.shp id_col output.ext\n");
         printf("\n");
         printf("  -o\t\tWrite outlet rows and columns, and exit\n");
         printf("  -f\t\tFind full longest flow paths\n");
         printf
             ("  -l\t\tUse less memory and don't preserve input data (faster than -L)\n");
         printf("  -L\t\tUse less memory and preserve input data\n");
+        printf("  -e encoding\tDirection encoding\n");
+        printf
+            ("\t\tpower2 (default): 2^0-7 CW from E (e.g., r.terraflow, ArcGIS)\n");
+        printf("\t\ttaudem: 1-8 (E-SE CCW) (e.g., d8flowdir)\n");
+        printf("\t\t45degree: 1-8 (NE-E CCW) (e.g., r.watershed)\n");
+        printf
+            ("\t\tE,SE,S,SW,W,NW,N,NE: custom (e.g., 1,8,7,6,5,4,3,2 for taudem)\n");
 #ifdef LOOP_THEN_TASK
         printf("  -s size\tTracing stack size (default %d)\n",
                tracing_stack_size);
@@ -124,6 +168,11 @@ int main(int argc, char *argv[])
         fprintf(stderr, "%s: Failed to read flow direction raster\n",
                 dir_path);
         exit(EXIT_FAILURE);
+    }
+    if (custom_encoding) {
+        printf("Converting flow direction encoding...\n");
+        if (convert_encoding(dir_map, encoding))
+            exit(EXIT_FAILURE);
     }
     gettimeofday(&end_time, NULL);
     printf("Input time for flow direction: %lld microsec\n",
