@@ -1,5 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
+#ifdef _MSC_VER
+/* MSVC requires this definition to expose common math constants because they
+ * are not part of the C standards */
+#define _USE_MATH_DEFINES
+#endif
 #include <math.h>
 #include <omp.h>
 #include "global.h"
