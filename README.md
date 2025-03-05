@@ -60,3 +60,4 @@ or
 cmake -DCMAKE_CONFIGURATION_TYPES=Release
 msbuild melfp.sln
 ```
+8. Find melfp.exe in `Release\melfp.exe`
