@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.31)
+cmake_minimum_required(VERSION 3.16)
 
 # XXX: undocumented
 # https://stackoverflow.com/a/10306476/16079666
@@ -10,9 +10,20 @@ project(MELFP)
 file(GLOB src *.c *.h)
 add_executable(melfp ${src})
 
+if(MSVC AND CMAKE_VERSION VERSION_GREATER_EQUAL "3.30")
+	# for task
+	# avoid error C7660: 'task': requires '-openmp:llvm' command line option(s)
+	set(OpenMP_RUNTIME_MSVC "llvm")
+endif()
+
 find_package(OpenMP REQUIRED)
 if(OpenMP_C_FOUND)
 	target_link_libraries(melfp PUBLIC OpenMP::OpenMP_C)
+	if(OpenMP_FOUND AND MSVC AND CMAKE_VERSION VERSION_LESS "3.30")
+		# CMake < 3.30 doesn't support OpenMP_RUNTIME_MSVC
+		# for task
+		add_compile_options(-openmp:llvm)
+	endif()
 endif()
 
 find_library(MATH_LIBRARY m)
