@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.31)
-#set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
+
+# XXX: undocumented
+# https://stackoverflow.com/a/10306476/16079666
+set(CMAKE_DISABLE_SOURCE_CHANGES ON)
+set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
+
 project(MELFP)
 
 file(GLOB src *.c *.h)
