@@ -2,6 +2,30 @@
 
 Part of the [Memory-Efficient I/O-Improved Drainage Analysis System (MIDAS)](https://github.com/HuidaeCho/midas)
 
+## Test data
+
+You can find test data at https://data.isnew.info/melfp.html.
+
+## How to test on Linux
+
+1. Build MELFP first
+2. Test it
+```bash
+cd test
+./pretest.sh
+./test.sh
+```
+
+## How to test on Windows
+
+For testing on Windows, you don't need to build MELFP yourself. `test\test.bat` will use the included binary `windows\melfp.exe`.
+
+```bash
+cd test
+pretest.bat
+test.bat
+```
+
 ## How to build on Linux
 
 1. First, install the [GDAL](https://gdal.org/) library.
