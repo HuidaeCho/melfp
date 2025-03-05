@@ -2,6 +2,8 @@
 
 Part of the [Memory-Efficient I/O-Improved Drainage Analysis System (MIDAS)](https://github.com/HuidaeCho/midas)
 
+A journal manuscript on this algorithm is currently under review.
+
 ## Test data
 
 You can find test data at https://data.isnew.info/melfp.html.
