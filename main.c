@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
     if ((p = getenv("MELFP_TRACING_STACK_SIZE")))
         tracing_stack_size = atoi(p);
     else
-        tracing_stack_size = 1024 * 5;
+        tracing_stack_size = 1024 * 3;
 #endif
 
     for (i = 1; i < argc; i++) {
