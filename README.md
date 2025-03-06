@@ -4,6 +4,13 @@ Part of the [Memory-Efficient I/O-Improved Drainage Analysis System (MIDAS)](htt
 
 A journal manuscript on this algorithm is currently under review.
 
+Predefined flow direction encodings in GeoTIFF: power2 (default, r.terraflow, ArcGIS), taudem (d8flowdir), 45degree (r.watershed)<br>
+![image](https://github.com/user-attachments/assets/990f0530-fded-4ee5-bfbb-85056a50ca1c)
+![image](https://github.com/user-attachments/assets/a02dfc15-a825-4210-82c4-4c9296dafadc)
+![image](https://github.com/user-attachments/assets/64f5c65a-c7cc-4e06-a69f-6fccd6435426)
+
+Custom flow direction encoding is also possible by passing `-e E,SE,S,SW,W,NW,N,NE` (e.g., 1,8,7,6,5,4,3,2 for taudem).
+
 ## Test data
 
 You can find test data at https://data.isnew.info/melfp.html.
