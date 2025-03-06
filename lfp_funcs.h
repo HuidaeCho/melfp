@@ -47,7 +47,7 @@ static unsigned char *outlet_dirs;
 static char *done;
 #endif
 
-/* Relative row, col, and direction to the center in order of
+/* relative row, col, and direction to the center in order of
  * E S W N SE SW NW NE */
 static int nbr_rcd[8][3] = {
     {0, 1, W},
