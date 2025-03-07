@@ -82,7 +82,7 @@ cd build
 7. Build MELFP
 ```cmd
 cmake ..
-msbuild melfp.sln /p:Configuration=Release
+msbuild melfp.sln -p:configuration=release
 ```
 or
 ```cmd
