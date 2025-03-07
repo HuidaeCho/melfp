@@ -119,8 +119,16 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
         SET_OUTLET(outlet_l->row[i], outlet_l->col[i]);
     }
 
-    /* loop through all outlets and delineate the subwatershed for each */
+    /* loop through all outlets and find longest flow paths for subwatersheds
+     */
+#ifdef _MSC_VER
+    /* XXX: MSVC requires private(i) so that a thread creating tasks can share
+     * its private i with threads who will execute generated tasks later
+     * (undocumented?); otherwise, i should be private by default */
+#pragma omp parallel for schedule(dynamic) private(i)
+#else
 #pragma omp parallel for schedule(dynamic)
+#endif
     for (i = 0; i < outlet_l->n; i++) {
         struct cell_stack *up_stack = malloc(sizeof *up_stack);
 
@@ -137,6 +145,15 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
                         &outlet_l->lflen[i], &outlet_l->head_pl[i], up_stack)
 #ifdef LOOP_THEN_TASK
             ) {
+#ifdef _MSC_VER
+	    /* XXX: MSVC needs it! even with the above private(i), i inside
+	     * tasks is not the same as i from the creator thread
+	     * (undocumented?); GCC works without this line */
+	    int I = i;
+#else
+#define I i
+#endif
+
             do {
                 /* calculate upstream longest flow paths at branching cells,
                  * compare their lengths, and add them if necessary */
@@ -180,21 +197,21 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
                             /* if its longest flow length is longer than or
                              * equal to the previously found one, add new
                              * longest flow paths */
-                            if (lflen >= outlet_l->lflen[i]) {
+                            if (lflen >= outlet_l->lflen[I]) {
                                 int j;
 
                                 /* if it is longer, reomve all previous longest
                                  * flow paths first */
-                                if (lflen > outlet_l->lflen[i]) {
-                                    outlet_l->northo[i] = northo;
-                                    outlet_l->ndia[i] = ndia;
-                                    outlet_l->lflen[i] = lflen;
-                                    reset_point_list(&outlet_l->head_pl[i]);
+                                if (lflen > outlet_l->lflen[I]) {
+                                    outlet_l->northo[I] = northo;
+                                    outlet_l->ndia[I] = ndia;
+                                    outlet_l->lflen[I] = lflen;
+                                    reset_point_list(&outlet_l->head_pl[I]);
                                 }
 
                                 /* add all new longest flow paths */
                                 for (j = 0; j < head_pl.n; j++)
-                                    add_point(&outlet_l->head_pl[i],
+                                    add_point(&outlet_l->head_pl[I],
                                               head_pl.row[j], head_pl.col[j]);
                             }
                         }
@@ -250,6 +267,9 @@ static TRACE_UP_RETURN trace_up(struct raster_map *dir_map, int row, int col,
                                 struct point_list *head_pl,
                                 struct cell_stack *up_stack)
 {
+#ifdef DONT_USE_TCO
+    do {
+#endif
     int i;
     int nup = 0;
     int next_row = -1, next_col = -1;
@@ -338,6 +358,13 @@ static TRACE_UP_RETURN trace_up(struct raster_map *dir_map, int row, int col,
     }
 #endif
 
+#ifdef DONT_USE_TCO
+	row = next_row;
+	col = next_col;
+	down_northo += ortho;
+	down_ndia += dia;
+    } while(1);
+#else
     /* use gcc -O2 or -O3 flags for tail-call optimization
      * (-foptimize-sibling-calls) */
 #ifdef LOOP_THEN_TASK
@@ -345,6 +372,7 @@ static TRACE_UP_RETURN trace_up(struct raster_map *dir_map, int row, int col,
 #endif
         trace_up(dir_map, next_row, next_col, down_northo + ortho,
                  down_ndia + dia, northo, ndia, lflen, head_pl, up_stack);
+#endif
 }
 
 static void find_full_lfp(struct raster_map *dir_map,
