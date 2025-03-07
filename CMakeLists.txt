@@ -8,10 +8,10 @@ set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 project(MELFP)
 
 # for tail recursion
-if(UNIX)
-	add_compile_options(-O3)
-elseif(MSVC)
+if(MSVC)
 	add_compile_options(/O2)
+else()
+	add_compile_options(-O3)
 endif()
 
 file(GLOB src *.c *.h)
