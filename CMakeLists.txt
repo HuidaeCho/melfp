@@ -7,6 +7,10 @@ set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 
 project(MELFP)
 
+if(UNIX)
+	add_compile_options(-O3)
+endif()
+
 file(GLOB src *.c *.h)
 add_executable(melfp ${src})
 
