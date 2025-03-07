@@ -28,7 +28,7 @@ cd test
 
 ## How to test on Windows
 
-For testing on Windows, you don't need to build MELFP yourself. `test\test.bat` will use the included binary `windows\melfp.exe`.
+For testing on Windows, you don't need to build MELFP yourself. `test\test.bat` will use the included binary `windows\melfp.exe`. However, the Windows version was about 12 times slower than the Linux version for 515,152 outlets on the same hardware.
 
 ```bash
 cd test
