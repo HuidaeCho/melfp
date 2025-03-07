@@ -11,7 +11,7 @@ void print_raster(const char *path, const char *null_str, const char *fmt)
     char format[128], *type_format;
     int row, col;
 
-    if (!(rast_map = read_raster(path, RASTER_MAP_TYPE_AUTO, 1)))
+    if (!(rast_map = read_raster(path, RASTER_MAP_TYPE_AUTO, 1, NULL, NULL)))
         return;
 
     switch (rast_map->type) {
@@ -22,6 +22,7 @@ void print_raster(const char *path, const char *null_str, const char *fmt)
         type_format = "f";
         break;
     case RASTER_MAP_TYPE_UINT32:
+    case RASTER_MAP_TYPE_UINT16:
         type_format = "u";
         break;
     default:
@@ -122,6 +123,12 @@ void print_raster(const char *path, const char *null_str, const char *fmt)
                 case RASTER_MAP_TYPE_INT32:
                     printf(format, rast_map->cells.int32[idx], sep);
                     break;
+                case RASTER_MAP_TYPE_UINT16:
+                    printf(format, rast_map->cells.uint16[idx], sep);
+                    break;
+                case RASTER_MAP_TYPE_INT16:
+                    printf(format, rast_map->cells.int16[idx], sep);
+                    break;
                 default:
                     printf(format, rast_map->cells.byte[idx], sep);
                     break;
@@ -141,10 +148,12 @@ int is_null(struct raster_map *rast_map, int row, int col)
 
     switch (rast_map->type) {
     case RASTER_MAP_TYPE_FLOAT64:
-        ret = rast_map->cells.float64[idx] == rast_map->null_value;
+        ret = rast_map->cells.float64[idx] == rast_map->null_value ||
+            isnan(rast_map->cells.float64[idx]);
         break;
     case RASTER_MAP_TYPE_FLOAT32:
-        ret = rast_map->cells.float32[idx] == rast_map->null_value;
+        ret = rast_map->cells.float32[idx] == rast_map->null_value ||
+            isnan(rast_map->cells.float32[idx]);
         break;
     case RASTER_MAP_TYPE_UINT32:
         ret = rast_map->cells.uint32[idx] == rast_map->null_value;
@@ -152,11 +161,92 @@ int is_null(struct raster_map *rast_map, int row, int col)
     case RASTER_MAP_TYPE_INT32:
         ret = rast_map->cells.int32[idx] == rast_map->null_value;
         break;
+    case RASTER_MAP_TYPE_UINT16:
+        ret = rast_map->cells.uint16[idx] == rast_map->null_value;
+        break;
+    case RASTER_MAP_TYPE_INT16:
+        ret = rast_map->cells.int16[idx] == rast_map->null_value;
+        break;
     default:
         ret = rast_map->cells.byte[idx] == rast_map->null_value;
         break;
     }
     return ret;
+}
+
+void set_null(struct raster_map *rast_map, int row, int col)
+{
+    size_t idx = (size_t)row * rast_map->ncols + col;
+
+    switch (rast_map->type) {
+    case RASTER_MAP_TYPE_FLOAT64:
+        rast_map->cells.float64[idx] = rast_map->null_value;
+        break;
+    case RASTER_MAP_TYPE_FLOAT32:
+        rast_map->cells.float32[idx] = rast_map->null_value;
+        break;
+    case RASTER_MAP_TYPE_UINT32:
+        rast_map->cells.uint32[idx] = rast_map->null_value;
+        break;
+    case RASTER_MAP_TYPE_INT32:
+        rast_map->cells.int32[idx] = rast_map->null_value;
+        break;
+    case RASTER_MAP_TYPE_UINT16:
+        rast_map->cells.uint16[idx] = rast_map->null_value;
+        break;
+    case RASTER_MAP_TYPE_INT16:
+        rast_map->cells.int16[idx] = rast_map->null_value;
+        break;
+    default:
+        rast_map->cells.byte[idx] = rast_map->null_value;
+        break;
+    }
+}
+
+void reset_null(struct raster_map *rast_map, double null_value)
+{
+    int row, col;
+
+#pragma omp parallel for schedule(dynamic) private(col)
+    for (row = 0; row < rast_map->nrows; row++)
+        for (col = 0; col < rast_map->ncols; col++) {
+            size_t idx = (size_t)row * rast_map->ncols + col;
+
+            switch (rast_map->type) {
+            case RASTER_MAP_TYPE_FLOAT64:
+                if (rast_map->cells.float64[idx] == rast_map->null_value ||
+                    isnan(rast_map->cells.float64[idx]))
+                    rast_map->cells.float64[idx] = null_value;
+                break;
+            case RASTER_MAP_TYPE_FLOAT32:
+                if (rast_map->cells.float32[idx] == rast_map->null_value ||
+                    isnan(rast_map->cells.float32[idx]))
+                    rast_map->cells.float32[idx] = null_value;
+                break;
+            case RASTER_MAP_TYPE_UINT32:
+                if (rast_map->cells.uint32[idx] == rast_map->null_value)
+                    rast_map->cells.uint32[idx] = null_value;
+                break;
+            case RASTER_MAP_TYPE_INT32:
+                if (rast_map->cells.int32[idx] == rast_map->null_value)
+                    rast_map->cells.int32[idx] = null_value;
+                break;
+            case RASTER_MAP_TYPE_UINT16:
+                if (rast_map->cells.uint16[idx] == rast_map->null_value)
+                    rast_map->cells.uint16[idx] = null_value;
+                break;
+            case RASTER_MAP_TYPE_INT16:
+                if (rast_map->cells.int16[idx] == rast_map->null_value)
+                    rast_map->cells.int16[idx] = null_value;
+                break;
+            default:
+                if (rast_map->cells.byte[idx] == rast_map->null_value)
+                    rast_map->cells.byte[idx] = null_value;
+                break;
+            }
+        }
+
+    rast_map->null_value = null_value;
 }
 
 struct raster_map *init_raster(int nrows, int ncols, int type)
@@ -182,6 +272,12 @@ struct raster_map *init_raster(int nrows, int ncols, int type)
         break;
     case RASTER_MAP_TYPE_INT32:
         row_size *= sizeof(int);
+        break;
+    case RASTER_MAP_TYPE_UINT16:
+        row_size *= sizeof(unsigned short);
+        break;
+    case RASTER_MAP_TYPE_INT16:
+        row_size *= sizeof(short);
         break;
     }
 
@@ -215,7 +311,9 @@ void copy_raster_metadata(struct raster_map *dest_map,
     dest_map->dy = src_map->dy;
 }
 
-struct raster_map *read_raster(const char *path, int type, int get_stats)
+struct raster_map *read_raster(const char *path, int type, int get_stats,
+                               double (*recode)(double, void *),
+                               void *recode_data)
 {
     struct raster_map *rast_map;
     GDALDatasetH *datasets, dataset;
@@ -263,68 +361,364 @@ struct raster_map *read_raster(const char *path, int type, int get_stats)
     rast_map->null_value = GDALGetRasterNoDataValue(band, NULL);
     rast_map->compress = 0;
 
-    switch (type) {
-    case RASTER_MAP_TYPE_FLOAT64:
-        gdt_type = GDT_Float64;
-        break;
-    case RASTER_MAP_TYPE_FLOAT32:
-        gdt_type = GDT_Float32;
-        break;
-    case RASTER_MAP_TYPE_UINT32:
-        gdt_type = GDT_UInt32;
-        break;
-    case RASTER_MAP_TYPE_INT32:
-        gdt_type = GDT_Int32;
-        break;
-    case RASTER_MAP_TYPE_BYTE:
-        gdt_type = GDT_Byte;
-        break;
-    default:
-        switch ((gdt_type = GDALGetRasterDataType(band))) {
-        case GDT_Float64:
-            type = RASTER_MAP_TYPE_FLOAT64;
+    if (recode) {
+        size_t gdt_row_size;
+        GDALDataType rast_type;
+
+        gdt_type = GDALGetRasterDataType(band);
+        gdt_row_size = row_size * GDALGetDataTypeSizeBytes(gdt_type);
+
+        switch (type) {
+        case RASTER_MAP_TYPE_FLOAT64:
+            rast_type = GDT_Float64;
             break;
-        case GDT_Float32:
-            type = RASTER_MAP_TYPE_FLOAT32;
+        case RASTER_MAP_TYPE_FLOAT32:
+            rast_type = GDT_Float32;
             break;
-        case GDT_UInt32:
-            type = RASTER_MAP_TYPE_UINT32;
+        case RASTER_MAP_TYPE_UINT32:
+            rast_type = GDT_UInt32;
             break;
-        case GDT_Int32:
-            type = RASTER_MAP_TYPE_INT32;
+        case RASTER_MAP_TYPE_INT32:
+            rast_type = GDT_Int32;
             break;
-        case GDT_Byte:
-            type = RASTER_MAP_TYPE_BYTE;
+        case RASTER_MAP_TYPE_UINT16:
+            rast_type = GDT_UInt16;
+            break;
+        case RASTER_MAP_TYPE_INT16:
+            rast_type = GDT_Int16;
+            break;
+        case RASTER_MAP_TYPE_BYTE:
+            rast_type = GDT_Byte;
             break;
         default:
-            fprintf(stderr, "Unsupported GDAL type\n");
-            exit(EXIT_FAILURE);
+            switch (gdt_type) {
+            case GDT_Float64:
+                rast_type = RASTER_MAP_TYPE_FLOAT64;
+                break;
+            case GDT_Float32:
+                rast_type = RASTER_MAP_TYPE_FLOAT32;
+                break;
+            case GDT_UInt32:
+                rast_type = RASTER_MAP_TYPE_UINT32;
+                break;
+            case GDT_Int32:
+                rast_type = RASTER_MAP_TYPE_INT32;
+                break;
+            case GDT_UInt16:
+                rast_type = RASTER_MAP_TYPE_UINT16;
+                break;
+            case GDT_Int16:
+                rast_type = RASTER_MAP_TYPE_INT16;
+                break;
+            case GDT_Byte:
+                rast_type = RASTER_MAP_TYPE_BYTE;
+                break;
+            default:
+                fprintf(stderr, "Unsupported GDAL type\n");
+                exit(EXIT_FAILURE);
+                break;
+            }
             break;
         }
-        break;
-    }
-    row_size *= GDALGetDataTypeSizeBytes(gdt_type);
+        row_size *= GDALGetDataTypeSizeBytes(rast_type);
 
-    rast_map->type = type;
-    rast_map->cells.v = malloc(rast_map->nrows * row_size);
+        rast_map->type = rast_type;
+        rast_map->cells.v = malloc(rast_map->nrows * row_size);
+
+        if (rast_type == gdt_type) {
+#pragma omp parallel for schedule(dynamic)
+            for (row = 0; row < rast_map->nrows; row++) {
+                if (GDALRasterIO
+                    (bands[omp_get_thread_num()], GF_Read, 0, row,
+                     rast_map->ncols, 1,
+                     (char *)rast_map->cells.v + row * row_size,
+                     rast_map->ncols, 1, gdt_type, 0, 0) == CE_None) {
+                    int col;
+
+                    for (col = 0; col < rast_map->ncols; col++) {
+                        size_t i = (size_t)row * rast_map->ncols + col;
+                        double v;
+
+                        switch (gdt_type) {
+                        case GDT_Float64:
+                            v = rast_map->cells.float64[i];
+                            break;
+                        case GDT_Float32:
+                            v = rast_map->cells.float32[i];
+                            break;
+                        case GDT_UInt32:
+                            v = rast_map->cells.uint32[i];
+                            break;
+                        case GDT_Int32:
+                            v = rast_map->cells.int32[i];
+                            break;
+                        case GDT_UInt16:
+                            v = rast_map->cells.uint16[i];
+                            break;
+                        case GDT_Int16:
+                            v = rast_map->cells.int16[i];
+                            break;
+                        default:
+                            v = rast_map->cells.byte[i];
+                            break;
+                        }
+
+                        if (v == rast_map->null_value || isnan(v))
+                            continue;
+
+                        switch (gdt_type) {
+                        case GDT_Float64:
+                            rast_map->cells.float64[i] =
+                                recode(v, recode_data);
+                            break;
+                        case GDT_Float32:
+                            rast_map->cells.float32[i] =
+                                recode(v, recode_data);
+                            break;
+                        case GDT_UInt32:
+                            rast_map->cells.uint32[i] =
+                                recode(v, recode_data);
+                            break;
+                        case GDT_Int32:
+                            rast_map->cells.int32[i] = recode(v, recode_data);
+                            break;
+                        case GDT_UInt16:
+                            rast_map->cells.uint16[i] =
+                                recode(v, recode_data);
+                            break;
+                        case GDT_Int16:
+                            rast_map->cells.int16[i] = recode(v, recode_data);
+                            break;
+                        default:
+                            rast_map->cells.byte[i] = recode(v, recode_data);
+                            break;
+                        }
+                    }
+                }
+                else
+                    error = 1;
+            }
+        }
+        else {
+            union
+            {
+                void *v;
+                unsigned char *byte;
+                short *int16;
+                unsigned short *uint16;
+                int *int32;
+                unsigned int *uint32;
+                float *float32;
+                double *float64;
+            } *cells;
+
+#pragma omp parallel
+            {
+#pragma omp single
+                cells = malloc(sizeof *cells * omp_get_num_threads());
+                cells[omp_get_thread_num()].v = malloc(gdt_row_size);
+            }
+
+            if (rast_type == GDT_Float64 || rast_type == GDT_Float32)
+                rast_map->null_value = NAN;
+            else if (rast_type == GDT_UInt32)
+                rast_map->null_value = UINT_MAX;
+            else if (rast_type == GDT_Int32)
+                rast_map->null_value = INT_MAX;
+            else if (rast_type == GDT_UInt16)
+                rast_map->null_value = USHRT_MAX;
+            else if (rast_type == GDT_Int16)
+                rast_map->null_value = SHRT_MAX;
+            else
+                rast_map->null_value = UCHAR_MAX;
 
 #pragma omp parallel for schedule(dynamic)
-    for (row = 0; row < rast_map->nrows; row++) {
-        if (GDALRasterIO
-            (bands[omp_get_thread_num()], GF_Read, 0, row, rast_map->ncols, 1,
-             (char *)rast_map->cells.v + row * row_size, rast_map->ncols,
-             1, gdt_type, 0, 0) != CE_None)
-            error = 1;
+            for (row = 0; row < rast_map->nrows; row++) {
+                int thread_num = omp_get_thread_num();
+
+                if (GDALRasterIO
+                    (bands[thread_num], GF_Read, 0, row,
+                     rast_map->ncols, 1, cells[thread_num].v, rast_map->ncols,
+                     1, gdt_type, 0, 0) == CE_None) {
+                    int col;
+
+                    for (col = 0; col < rast_map->ncols; col++) {
+                        size_t i = (size_t)row * rast_map->ncols + col;
+                        double v;
+
+                        switch (gdt_type) {
+                        case GDT_Float64:
+                            v = cells[thread_num].float64[col];
+                            break;
+                        case GDT_Float32:
+                            v = cells[thread_num].float32[col];
+                            break;
+                        case GDT_UInt32:
+                            v = cells[thread_num].uint32[col];
+                            break;
+                        case GDT_Int32:
+                            v = cells[thread_num].int32[col];
+                            break;
+                        case GDT_UInt16:
+                            v = cells[thread_num].uint16[col];
+                            break;
+                        case GDT_Int16:
+                            v = cells[thread_num].int16[col];
+                            break;
+                        default:
+                            v = cells[thread_num].byte[col];
+                            break;
+                        }
+
+                        if (v == rast_map->null_value || isnan(v)) {
+                            switch (rast_type) {
+                            case GDT_Float64:
+                                rast_map->cells.float64[i] =
+                                    rast_map->null_value;
+                                break;
+                            case GDT_Float32:
+                                rast_map->cells.float32[i] =
+                                    rast_map->null_value;
+                                break;
+                            case GDT_UInt32:
+                                rast_map->cells.uint32[i] =
+                                    rast_map->null_value;
+                                break;
+                            case GDT_Int32:
+                                rast_map->cells.int32[i] =
+                                    rast_map->null_value;
+                                break;
+                            case GDT_UInt16:
+                                rast_map->cells.uint16[i] =
+                                    rast_map->null_value;
+                                break;
+                            case GDT_Int16:
+                                rast_map->cells.int16[i] =
+                                    rast_map->null_value;
+                                break;
+                            default:
+                                rast_map->cells.byte[i] =
+                                    rast_map->null_value;
+                                break;
+                            }
+                            continue;
+                        }
+
+                        switch (rast_type) {
+                        case GDT_Float64:
+                            rast_map->cells.float64[i] =
+                                recode(v, recode_data);
+                            break;
+                        case GDT_Float32:
+                            rast_map->cells.float32[i] =
+                                recode(v, recode_data);
+                            break;
+                        case GDT_UInt32:
+                            rast_map->cells.uint32[i] =
+                                recode(v, recode_data);
+                            break;
+                        case GDT_Int32:
+                            rast_map->cells.int32[i] = recode(v, recode_data);
+                            break;
+                        case GDT_UInt16:
+                            rast_map->cells.uint16[i] =
+                                recode(v, recode_data);
+                            break;
+                        case GDT_Int16:
+                            rast_map->cells.int16[i] = recode(v, recode_data);
+                            break;
+                        default:
+                            rast_map->cells.byte[i] = recode(v, recode_data);
+                            break;
+                        }
+                    }
+                }
+                else
+                    error = 1;
+            }
+
+#pragma omp parallel
+            free(cells[omp_get_thread_num()].v);
+            free(cells);
+        }
     }
+    else {
+        switch (type) {
+        case RASTER_MAP_TYPE_FLOAT64:
+            gdt_type = GDT_Float64;
+            break;
+        case RASTER_MAP_TYPE_FLOAT32:
+            gdt_type = GDT_Float32;
+            break;
+        case RASTER_MAP_TYPE_UINT32:
+            gdt_type = GDT_UInt32;
+            break;
+        case RASTER_MAP_TYPE_INT32:
+            gdt_type = GDT_Int32;
+            break;
+        case RASTER_MAP_TYPE_UINT16:
+            gdt_type = GDT_UInt16;
+            break;
+        case RASTER_MAP_TYPE_INT16:
+            gdt_type = GDT_Int16;
+            break;
+        case RASTER_MAP_TYPE_BYTE:
+            gdt_type = GDT_Byte;
+            break;
+        default:
+            switch ((gdt_type = GDALGetRasterDataType(band))) {
+            case GDT_Float64:
+                type = RASTER_MAP_TYPE_FLOAT64;
+                break;
+            case GDT_Float32:
+                type = RASTER_MAP_TYPE_FLOAT32;
+                break;
+            case GDT_UInt32:
+                type = RASTER_MAP_TYPE_UINT32;
+                break;
+            case GDT_Int32:
+                type = RASTER_MAP_TYPE_INT32;
+                break;
+            case GDT_UInt16:
+                type = RASTER_MAP_TYPE_UINT16;
+                break;
+            case GDT_Int16:
+                type = RASTER_MAP_TYPE_INT16;
+                break;
+            case GDT_Byte:
+                type = RASTER_MAP_TYPE_BYTE;
+                break;
+            default:
+                fprintf(stderr, "Unsupported GDAL type\n");
+                exit(EXIT_FAILURE);
+                break;
+            }
+            break;
+        }
+        row_size *= GDALGetDataTypeSizeBytes(gdt_type);
+
+        rast_map->type = type;
+        rast_map->cells.v = malloc(rast_map->nrows * row_size);
+
+#pragma omp parallel for schedule(dynamic)
+        for (row = 0; row < rast_map->nrows; row++) {
+            if (GDALRasterIO
+                (bands[omp_get_thread_num()], GF_Read, 0, row,
+                 rast_map->ncols, 1,
+                 (char *)rast_map->cells.v + row * row_size, rast_map->ncols,
+                 1, gdt_type, 0, 0) != CE_None)
+                error = 1;
+        }
+    }
+
+    free(bands);
 
 #pragma omp parallel
     GDALClose(datasets[omp_get_thread_num()]);
+    free(datasets);
 
-    if (error) {
-        free(datasets);
-        free(bands);
+    if (error)
         return NULL;
-    }
 
     return rast_map;
 }
@@ -336,6 +730,7 @@ int write_raster(const char *path, struct raster_map *rast_map, int type)
     GDALDatasetH dataset;
     GDALRasterBandH band;
     GDALDataType data_type, gdt_type;
+    size_t row_size;
 
     if (!driver)
         return 1;
@@ -346,6 +741,8 @@ int write_raster(const char *path, struct raster_map *rast_map, int type)
 
     if (rast_map->compress)
         options = CSLSetNameValue(options, "COMPRESS", "ZSTD");
+
+    row_size = rast_map->ncols;
 
     /* actual data size */
     switch (rast_map->type) {
@@ -361,10 +758,17 @@ int write_raster(const char *path, struct raster_map *rast_map, int type)
     case RASTER_MAP_TYPE_INT32:
         data_type = GDT_Int32;
         break;
+    case RASTER_MAP_TYPE_UINT16:
+        data_type = GDT_UInt16;
+        break;
+    case RASTER_MAP_TYPE_INT16:
+        data_type = GDT_Int16;
+        break;
     default:
         data_type = GDT_Byte;
         break;
     }
+    row_size *= GDALGetDataTypeSizeBytes(data_type);
 
     /* requested data type */
     gdt_type = data_type;
@@ -381,6 +785,12 @@ int write_raster(const char *path, struct raster_map *rast_map, int type)
             break;
         case RASTER_MAP_TYPE_INT32:
             gdt_type = GDT_Int32;
+            break;
+        case RASTER_MAP_TYPE_UINT16:
+            gdt_type = GDT_UInt16;
+            break;
+        case RASTER_MAP_TYPE_INT16:
+            gdt_type = GDT_Int16;
             break;
         default:
             gdt_type = GDT_Byte;

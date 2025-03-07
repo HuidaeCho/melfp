@@ -58,6 +58,10 @@ GLOBAL int tracing_stack_size;
 /* timeval_diff.c */
 long long timeval_diff(struct timeval *, struct timeval *, struct timeval *);
 
+/* recode.c */
+double recode_encoding(double, void *);
+double recode_degree(double, void *);
+
 /* outlet_list.c */
 void init_outlet_list(struct outlet_list *);
 void reset_outlet_list(struct outlet_list *);
@@ -78,7 +82,6 @@ int write_outlets(const char *, struct outlet_list *);
 void lfp(struct raster_map *, struct outlet_list *, int, int);
 
 /* lfp_lessmem.c */
-int convert_encoding(struct raster_map *, int *);
 void lfp_lessmem(struct raster_map *, struct outlet_list *, int, int);
 
 /* lfp_moremem.c */

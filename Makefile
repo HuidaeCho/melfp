@@ -17,6 +17,7 @@ melfp$(EXT): \
 	main.o \
 	timeval_diff.o \
 	raster.o \
+	recode.o \
 	outlet_list.o \
 	point_list.o \
 	outlets.o \
