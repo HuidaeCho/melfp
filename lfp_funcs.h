@@ -323,6 +323,8 @@ static TRACE_UP_RETURN trace_up(struct raster_map *dir_map, int row, int col,
                 ;
 
 #ifdef LOOP_THEN_TASK
+	/* next cell is not popped yet;
+	 * if current stack size >= tracing stack size */
         if (up_stack->n >= tracing_stack_size)
             return 1;
 #endif
@@ -345,7 +347,9 @@ static TRACE_UP_RETURN trace_up(struct raster_map *dir_map, int row, int col,
     }
 
 #ifdef LOOP_THEN_TASK
-    if (up_stack->n >= tracing_stack_size - 1) {
+    /* next cell is not in the stack;
+     * if current stack size + next cell >= tracing stack size */
+    if (up_stack->n + 1 >= tracing_stack_size) {
         struct cell up;
 
         up.row = next_row;
