@@ -146,10 +146,10 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
 #ifdef LOOP_THEN_TASK
             ) {
 #ifdef _MSC_VER
-	    /* XXX: MSVC needs it! even with the above private(i), i inside
-	     * tasks is not the same as i from the creator thread
-	     * (undocumented?); GCC works without this line */
-	    int I = i;
+            /* XXX: MSVC needs it! even with the above private(i), i inside
+             * tasks is not the same as i from the creator thread
+             * (undocumented?); GCC works without this line */
+            int I = i;
 #else
 #define I i
 #endif
@@ -270,104 +270,104 @@ static TRACE_UP_RETURN trace_up(struct raster_map *dir_map, int row, int col,
 #ifdef DONT_USE_TCO
     do {
 #endif
-    int i;
-    int nup = 0;
-    int next_row = -1, next_col = -1;
-    int ortho = 0, dia = 0;
+        int i;
+        int nup = 0;
+        int next_row = -1, next_col = -1;
+        int ortho = 0, dia = 0;
 
-    for (i = 0; i < 8; i++) {
-        int nbr_row = row + nbr_rcd[i][0];
-        int nbr_col = col + nbr_rcd[i][1];
+        for (i = 0; i < 8; i++) {
+            int nbr_row = row + nbr_rcd[i][0];
+            int nbr_col = col + nbr_rcd[i][1];
 
-        /* skip edge cells */
-        if (nbr_row < 0 || nbr_row >= nrows || nbr_col < 0 ||
-            nbr_col >= ncols)
-            continue;
+            /* skip edge cells */
+            if (nbr_row < 0 || nbr_row >= nrows || nbr_col < 0 ||
+                nbr_col >= ncols)
+                continue;
 
-        /* if a neighbor cell flows into the current cell, trace up further */
-        if (DIR(nbr_row, nbr_col) == nbr_rcd[i][2]
+            /* if a neighbor cell flows into the current cell, trace up further */
+            if (DIR(nbr_row, nbr_col) == nbr_rcd[i][2]
 #ifndef USE_LESS_MEMORY
-            && IS_NOTDONE(nbr_row, nbr_col)
+                && IS_NOTDONE(nbr_row, nbr_col)
 #endif
-            && ++nup == 1) {
-            /* climb up only to this cell at this time */
-            next_row = nbr_row;
-            next_col = nbr_col;
-            ortho = i < 4;
-            dia = !ortho;
-            SET_DONE(next_row, next_col);
-        }
-    }
-
-    if (!nup) {
-        /* reached a ridge cell; if there were any up cells to visit, let's go
-         * back or simply complete tracing */
-        struct cell up;
-        double flen = down_northo + down_ndia * M_SQRT2;
-
-        if (flen >= *lflen) {
-            if (flen > *lflen) {
-                *northo = down_northo;
-                *ndia = down_ndia;
-                *lflen = flen;
-                reset_point_list(head_pl);
+                && ++nup == 1) {
+                /* climb up only to this cell at this time */
+                next_row = nbr_row;
+                next_col = nbr_col;
+                ortho = i < 4;
+                dia = !ortho;
+                SET_DONE(next_row, next_col);
             }
-            add_point(head_pl, row, col);
         }
 
-        if (!up_stack->n)
-            return
+        if (!nup) {
+            /* reached a ridge cell; if there were any up cells to visit, let's go
+             * back or simply complete tracing */
+            struct cell up;
+            double flen = down_northo + down_ndia * M_SQRT2;
+
+            if (flen >= *lflen) {
+                if (flen > *lflen) {
+                    *northo = down_northo;
+                    *ndia = down_ndia;
+                    *lflen = flen;
+                    reset_point_list(head_pl);
+                }
+                add_point(head_pl, row, col);
+            }
+
+            if (!up_stack->n)
+                return
 #ifdef LOOP_THEN_TASK
-                0
+                    0
 #endif
-                ;
+                    ;
 
 #ifdef LOOP_THEN_TASK
-	/* next cell is not popped yet;
-	 * if current stack size >= tracing stack size */
-        if (up_stack->n >= tracing_stack_size)
+            /* next cell is not popped yet;
+             * if current stack size >= tracing stack size */
+            if (up_stack->n >= tracing_stack_size)
+                return 1;
+#endif
+
+            up = pop_up(up_stack);
+            next_row = up.row;
+            next_col = up.col;
+            down_northo = up.northo;
+            down_ndia = up.ndia;
+        }
+        else if (nup > 1) {
+            /* if there are more up cells to visit, let's come back later */
+            struct cell up;
+
+            up.row = row;
+            up.col = col;
+            up.northo = down_northo;
+            up.ndia = down_ndia;
+            push_up(up_stack, &up);
+        }
+
+#ifdef LOOP_THEN_TASK
+        /* next cell is not in the stack;
+         * if current stack size + next cell >= tracing stack size */
+        if (up_stack->n + 1 >= tracing_stack_size) {
+            struct cell up;
+
+            up.row = next_row;
+            up.col = next_col;
+            up.northo = down_northo + ortho;
+            up.ndia = down_ndia + dia;
+            push_up(up_stack, &up);
+
             return 1;
-#endif
-
-        up = pop_up(up_stack);
-        next_row = up.row;
-        next_col = up.col;
-        down_northo = up.northo;
-        down_ndia = up.ndia;
-    }
-    else if (nup > 1) {
-        /* if there are more up cells to visit, let's come back later */
-        struct cell up;
-
-        up.row = row;
-        up.col = col;
-        up.northo = down_northo;
-        up.ndia = down_ndia;
-        push_up(up_stack, &up);
-    }
-
-#ifdef LOOP_THEN_TASK
-    /* next cell is not in the stack;
-     * if current stack size + next cell >= tracing stack size */
-    if (up_stack->n + 1 >= tracing_stack_size) {
-        struct cell up;
-
-        up.row = next_row;
-        up.col = next_col;
-        up.northo = down_northo + ortho;
-        up.ndia = down_ndia + dia;
-        push_up(up_stack, &up);
-
-        return 1;
-    }
+        }
 #endif
 
 #ifdef DONT_USE_TCO
-	row = next_row;
-	col = next_col;
-	down_northo += ortho;
-	down_ndia += dia;
-    } while(1);
+        row = next_row;
+        col = next_col;
+        down_northo += ortho;
+        down_ndia += dia;
+    } while (1);
     /* XXX: work around an indent bug
      * #else
      * doesn't work */
