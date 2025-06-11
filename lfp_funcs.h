@@ -368,7 +368,11 @@ static TRACE_UP_RETURN trace_up(struct raster_map *dir_map, int row, int col,
 	down_northo += ortho;
 	down_ndia += dia;
     } while(1);
-#else
+    /* XXX: work around an indent bug
+     * #else
+     * doesn't work */
+#endif
+#ifndef DONT_USE_TCO
     /* use gcc -O2 or -O3 flags for tail-call optimization
      * (-foptimize-sibling-calls) */
 #ifdef LOOP_THEN_TASK
