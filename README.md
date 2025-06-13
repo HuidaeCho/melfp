@@ -29,13 +29,23 @@ cd test
 
 ## How to test on Windows
 
-For testing on Windows, you don't need to build MELFP yourself. `test\test.bat` will use the included binary `windows\melfp.exe`. However, the Windows version was about 12 times slower than the Linux version for 515,152 outlets on the same hardware.
+For testing on Windows, you don't need to build MELFP yourself. `test\test.bat` will use the included binary `windows\melfp.exe`. However, the Windows version was about 3-12 times slower than the Linux version for 515,152 outlets on the same hardware.
 
 ```bash
 cd test
 pretest.bat
 test.bat
 ```
+
+When I tested it under WSL using the same hardware, it showed almost native Linux performance again.
+
+* Linux (`test/linux_gcc.log`): 55382845 microsec (55.4 sec)
+* Windows (`test/windows_msvc.log`): 171089000 microsec (171.1 sec)
+* WSL (`test/wsl_gcc.log`): 60885546 microsec (60.9 sec)
+
+These results suggest that the significant performance difference between Windows and WSL is not hardware-related, but likely due to differences in OpenMP runtime optimization, thread scheduling, task overhead, or system libraries.
+
+For best performance on Windows systems, I highly recommend running the code in WSL.
 
 ## How to build on Linux
 
