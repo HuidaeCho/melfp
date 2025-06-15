@@ -190,6 +190,8 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
                             }
                         }
 
+                        free_up_stack(task_up_stack);
+
                         /* this block is critical to avoid race conditions when
                          * updating outlet_l->*[i] values */
 #pragma omp critical
@@ -229,6 +231,8 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
          * #endif
          * doesn't work */
         ;
+
+        free_up_stack(up_stack);
     }
 
 #ifdef USE_LESS_MEMORY
