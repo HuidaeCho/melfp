@@ -16,29 +16,70 @@
 #define LFP lfp_lessmem
 #define SET_OUTLET(row, col) do { DIR(row, col) = 0; } while(0)
 #define IS_OUTLET(row, col) !DIR(row, col)
+
+/* to flag a cell as done, add 5 to its direction value; 5 is the smallest
+ * number that won't change the direction to another; for example, adding 3 to
+ * E (1) would change E to S (4) */
 #define SET_DONE(row, col) do { DIR(row, col) += 5; } while(0)
+
+/* if a direction value was not altered by adding 5, subtracting 1 from it will
+ * clear the bit position for the original value and the bitwise AND between
+ * the original and 1-subtracted values will yield 0; if a direction value was
+ * altered by adding 5, the bitwise AND value will have some bits uncleared,
+ * indicating which cells are done */
 #define IS_RECOVERABLE(row, col) (!IS_DIR_NULL(row, col) && \
         DIR(row, col) & (DIR(row, col) - 1))
+
+/* recover the original direction value by subtracting 5 */
 #define RECOVER(row, col) do { DIR(row, col) -= 5; } while(0)
+
 static unsigned char *outlet_dirs;
 #else
 #define LFP lfp_moremem
 #ifdef USE_BITS_FOR_MORE_MEMORY
+
+/*******************************************************************************
+ * this more-memory version allocates one byte per four cells
+ */
+
+/* store outlet and done bit flags for four cells in a byte; the total number
+ * of cells divided by 4 (>> 2) plus one byte for remaining three cells if any
+ */
 #define SIZE ((((size_t)nrows * ncols) >> 2) + \
         ((((size_t)nrows * ncols) & 3) != 0))
+
+/* divide the cell index by 4 (>> 2) to find the location in the done array
+ * where information for four cells is stored in a byte */
 #define DONE(row, col) done[INDEX(row, col) >> 2]
+
+/* in each byte in the done array, odd bits are for done flags; however, BIT0
+ * does not return a bit location, but it indicates the actual flagged value
+ * for the indexed cell */
 #define BIT0(row, col) (1 << ((INDEX(row, col) & 3) << 1))
+
+/* even bits are for outlet flags; similarly, BIT1 returns the actual flagged
+ * value for the indexed cell */
 #define BIT1(row, col) (BIT0(row, col) << 1)
+
+/* tests for bit flags */
 #define SET_OUTLET(row, col) do { DONE(row, col) |= BIT1(row, col); } while(0)
 #define IS_OUTLET(row, col) (DONE(row, col) & BIT1(row, col))
 #define SET_DONE(row, col) do { DONE(row, col) |= BIT0(row, col); } while(0)
 #define IS_NOTDONE(row, col) !(DONE(row, col) & \
         (BIT0(row, col) | BIT1(row, col)))
 #else
+
+/*******************************************************************************
+ * this more-memory version allocates one byte per cell
+ */
 #define SIZE ((size_t)nrows * ncols)
 #define DONE(row, col) done[INDEX(row, col)]
+
+/* bit 0 for outlet */
 #define SET_OUTLET(row, col) do { DONE(row, col) |= 1; } while(0)
 #define IS_OUTLET(row, col) (DONE(row, col) & 1)
+
+/* bit 1 for done */
 #define SET_DONE(row, col) do { DONE(row, col) |= 2; } while(0)
 #define IS_NOTDONE(row, col) !(DONE(row, col) & 3)
 #endif
