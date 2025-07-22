@@ -87,8 +87,12 @@ void lfp_lessmem(struct raster_map *, struct outlet_list *, int, int);
 /* lfp_moremem.c */
 void lfp_moremem(struct raster_map *, struct outlet_list *, int);
 
-/* heads.c */
-int write_heads(const char *, const char *, struct outlet_list *,
-                struct raster_map *);
+/* write.c */
+int write_lfp(const char *, const char *, struct outlet_list *,
+              struct raster_map *, int);
+int write_head_points(const char *, const char *, struct outlet_list *,
+                      struct raster_map *, int);
+int write_head_coors(const char *, const char *, struct outlet_list *,
+                     struct raster_map *);
 
 #endif

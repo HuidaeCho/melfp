@@ -24,7 +24,7 @@ melfp$(EXT): \
 	lfp.o \
 	lfp_lessmem.o \
 	lfp_moremem.o \
-	heads.o
+	write.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(GDAL_LIBS)
 
 *.o: global.h raster.h
