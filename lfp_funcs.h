@@ -40,6 +40,14 @@ static unsigned char *outlet_dirs;
 
 /*******************************************************************************
  * this more-memory version allocates one byte per four cells
+ *
+ * XXX: the idea was great, but data races can occur because multiple threads
+ * can try to update the same byte in the done array for four different cells;
+ * I've tried omp critical statements for SET_OUTLET and SET_DONE, but they
+ * turn out to be too slow; with data races, multiple identical longest flow
+ * paths can be generated; that's not too bad, but just don't use this mode;
+ * why would you want to save memory when you use a more-memory version anyway?
+ * either use the less-memory version or the byte-mode more-memory version.
  */
 
 /* store outlet and done bit flags for four cells in a byte; the total number
