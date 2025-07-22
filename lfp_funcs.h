@@ -151,10 +151,32 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
 
 #pragma omp parallel for schedule(dynamic)
     for (i = 0; i < outlet_l->n; i++) {
+        int j;
+        int nup = 0;
+
 #ifdef USE_LESS_MEMORY
         outlet_dirs[i] = DIR(outlet_l->row[i], outlet_l->col[i]);
 #endif
-        SET_OUTLET(outlet_l->row[i], outlet_l->col[i]);
+        for (j = 0; j < 8; j++) {
+            int nbr_row = outlet_l->row[i] + nbr_rcd[j][0];
+            int nbr_col = outlet_l->col[i] + nbr_rcd[j][1];
+
+            /* skip edge cells */
+            if (nbr_row < 0 || nbr_row >= nrows || nbr_col < 0 ||
+                nbr_col >= ncols)
+                continue;
+
+            if (DIR(nbr_row, nbr_col) == nbr_rcd[j][2])
+                nup++;
+        }
+
+        /* only if the outlet has any upstream neighbor cells, flag it as an
+         * outlet to avoid cross-tracing it because subwatershed-level longest
+         * flow paths should not pass through any outlets; however, if it is a
+         * headwater cell without any upstream cells, it can start a longest
+         * flow path for its downstream outlets, if any, so leave them */
+        if (nup)
+            SET_OUTLET(outlet_l->row[i], outlet_l->col[i]);
     }
 
     /* loop through all outlets and find longest flow paths for subwatersheds
