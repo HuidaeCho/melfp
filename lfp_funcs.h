@@ -122,7 +122,6 @@ static int nrows, ncols;
 #define TRACE_UP_RETURN void
 #endif
 
-
 static TRACE_UP_RETURN trace_up(struct raster_map *, int, int, int, int,
                                 int *, int *, double *, struct point_list *,
                                 struct cell_stack *);
