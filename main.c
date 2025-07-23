@@ -17,11 +17,11 @@ int main(int argc, char *argv[])
 {
     int i;
     int print_usage = 1, write_outlet = 0, find_full = 0, use_lessmem =
-        0, output = 1;
+        2, output = 1;
     double (*recode)(double, void *) = NULL;
     int *recode_data = NULL, encoding[8];
     char *dir_path = NULL, *outlets_path = NULL, *id_col =
-        NULL, *output_path = NULL, *coors_path;
+        NULL, *output_path = NULL, *coors_path = NULL;
     struct raster_map *dir_map;
     struct outlet_list *outlet_l;
     struct timeval start_time, end_time;
@@ -49,11 +49,11 @@ int main(int argc, char *argv[])
                     find_full = 1;
                     break;
                 case 'm':
-                    if (!use_lessmem)
-                        use_lessmem = 1;
+                    use_lessmem = 0;
                     break;
-                case 'M':
-                    use_lessmem = 2;
+                case 'P':
+                    if (use_lessmem)
+                        use_lessmem = 1;
                     break;
                 case 'e':
                     if (i == argc - 1) {
@@ -157,23 +157,23 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Missing output formats\n");
         print_usage = 2;
     }
+    else if (output & 1 && use_lessmem == 1) {
+        fprintf(stderr,
+                "Forced to preserve input data for vector routing; Ignoring -P\n");
+        use_lessmem = 2;
+    }
 
     if (print_usage) {
         if (print_usage == 2)
             printf("\n");
         printf
-            ("Usage: melfp OPTIONS fdr.tif outlets.shp id_col output.ext\n");
+            ("Usage: melfp OPTIONS fdr.tif outlets.shp id_col output.gpkg\n");
         printf("\n");
         printf("  -o\t\tWrite outlet rows and columns, and exit\n");
         printf("  -f\t\tFind full longest flow paths\n");
-        printf
-            ("  -m\t\tUse less memory and don't preserve input data (faster than -L)\n");
-        printf("  -M\t\tUse less memory and preserve input data\n");
+        printf("  -m\t\tUse more memory\n");
+        printf("  -P\t\tDo not preserve input data (faster with -L)\n");
         printf("  -e encoding\tDirection encoding\n");
-        printf("  -L\t\tDo not output longest flow path lines\n");
-        printf("  -p\t\tOutput longest flow path headwater points\n");
-        printf
-            ("  -c coors.csv\tOutput longest flow path headwater coordinates\n");
         printf
             ("\t\tpower2 (default): 2^0-7 CW from E (e.g., r.terraflow, ArcGIS)\n");
         printf("\t\ttaudem: 1-8 (E-SE CCW) (e.g., d8flowdir)\n");
@@ -181,6 +181,10 @@ int main(int argc, char *argv[])
         printf("\t\tdegree: (0,360] (E-E CCW)\n");
         printf
             ("\t\tE,SE,S,SW,W,NW,N,NE: custom (e.g., 1,8,7,6,5,4,3,2 for taudem)\n");
+        printf("  -L\t\tDo not output longest flow path lines\n");
+        printf("  -p\t\tOutput longest flow path headwater points\n");
+        printf
+            ("  -c coors.csv\tOutput longest flow path headwater coordinates\n");
 #ifdef LOOP_THEN_TASK
         printf("  -s size\tTracing stack size (default %d)\n",
                tracing_stack_size);
@@ -189,9 +193,8 @@ int main(int argc, char *argv[])
         printf("  outlets.shp\tInput outlets Shapefile\n");
         printf("  id_col\tID column\n");
         printf
-            ("  output.ext\tOutput longest flow path head coordinatess (TODO: Shapefile)\n");
-        printf
-            ("  \t\tOutput text file for outlet rows and columns with -o\n");
+            ("  output.gpkg\tOutput longest flow path GeoPackage\n"
+             "  \t\tOutput text file for outlet rows and columns with -o\n");
         exit(print_usage == 1 ? EXIT_SUCCESS : EXIT_FAILURE);
     }
 
@@ -244,6 +247,7 @@ int main(int argc, char *argv[])
     }
     else {
         int append_layer = 0;
+        int num_lfp = 0;
 
 #pragma omp parallel
 #pragma omp single
@@ -276,6 +280,10 @@ int main(int argc, char *argv[])
         printf
             ("Computation time for longest flow paths: %lld microsec\n",
              timeval_diff(NULL, &end_time, &start_time));
+
+        for (i = 0; i < outlet_l->n; i++)
+            num_lfp += outlet_l->head_pl[i].n;
+        printf("Number of longest flow paths found: %d\n", num_lfp);
 
         if (output & 1) {
             printf("Writing longest flow path lines <%s>...\n", output_path);
