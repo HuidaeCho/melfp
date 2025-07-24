@@ -49,7 +49,7 @@ int write_lfp(const char *output_path, const char *id_col,
     length_field = OGR_L_FindFieldIndex(layer, "length", TRUE);
 
     for (i = 0; i < outlet_l->n; i++) {
-        int npnts = outlet_l->northo[i] + outlet_l->ndia[i];
+        int npnts = outlet_l->northo[i] + outlet_l->ndia[i] + 1;
         int j;
 
         for (j = 0; j < outlet_l->head_pl[i].n; j++) {
@@ -103,7 +103,7 @@ int write_lfp(const char *output_path, const char *id_col,
                     col++;
                     break;
                 }
-            } while (pnt <= npnts);
+            } while (pnt < npnts);
 
             OGR_F_SetGeometry(feature, geometry);
             if (OGR_L_CreateFeature(layer, feature) != OGRERR_NONE)

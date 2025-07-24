@@ -137,7 +137,7 @@ static void find_full_lfp(struct raster_map *, struct outlet_list *);
 static void init_up_stack(struct cell_stack *);
 static void free_up_stack(struct cell_stack *);
 static void push_up(struct cell_stack *, struct cell *);
-static struct cell pop_up(struct cell_stack *);
+static void pop_up(struct cell_stack *, struct cell *);
 
 void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
          int find_full
@@ -229,7 +229,7 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
                     struct cell up;
 
 #pragma omp critical
-                    up = pop_up(up_stack);
+                    pop_up(up_stack, &up);
 
 #pragma omp task
                     {
@@ -251,8 +251,9 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
                              &northo, &ndia, &lflen, &head_pl,
                              task_up_stack)) {
                             while (task_up_stack->n) {
-                                struct cell task_up = pop_up(task_up_stack);
+                                struct cell task_up;
 
+                                pop_up(task_up_stack, &task_up);
 #pragma omp critical
                                 push_up(up_stack, &task_up);
                             }
@@ -346,6 +347,7 @@ static TRACE_UP_RETURN trace_up(struct raster_map *dir_map, int row, int col,
         int nup = 0;
         int next_row = -1, next_col = -1;
         int ortho = 0, dia = 0;
+        struct cell up;
 
         for (i = 0; i < 8; i++) {
             int nbr_row = row + nbr_rcd[i][0];
@@ -374,7 +376,6 @@ static TRACE_UP_RETURN trace_up(struct raster_map *dir_map, int row, int col,
         if (!nup) {
             /* reached a ridge cell; if there were any up cells to visit, let's go
              * back or simply complete tracing */
-            struct cell up;
             double flen = down_northo + down_ndia * M_SQRT2;
 
             if (flen >= *lflen) {
@@ -401,7 +402,7 @@ static TRACE_UP_RETURN trace_up(struct raster_map *dir_map, int row, int col,
                 return 1;
 #endif
 
-            up = pop_up(up_stack);
+            pop_up(up_stack, &up);
             next_row = up.row;
             next_col = up.col;
             down_northo = up.northo;
@@ -409,8 +410,6 @@ static TRACE_UP_RETURN trace_up(struct raster_map *dir_map, int row, int col,
         }
         else if (nup > 1) {
             /* if there are more up cells to visit, let's come back later */
-            struct cell up;
-
             up.row = row;
             up.col = col;
             up.northo = down_northo;
@@ -422,11 +421,9 @@ static TRACE_UP_RETURN trace_up(struct raster_map *dir_map, int row, int col,
         /* next cell is not in the stack;
          * if current stack size + next cell >= tracing stack size */
         if (up_stack->n + 1 >= tracing_stack_size) {
-            struct cell up;
-
             up.row = next_row;
             up.col = next_col;
-            up.northo = down_northo + ortho;
+            up.northo = 1;      //down_northo + ortho;
             up.ndia = down_ndia + dia;
             push_up(up_stack, &up);
 
@@ -589,12 +586,10 @@ static void push_up(struct cell_stack *up_stack, struct cell *up)
     up_stack->cells[up_stack->n++] = *up;
 }
 
-static struct cell pop_up(struct cell_stack *up_stack)
+static void pop_up(struct cell_stack *up_stack, struct cell *up)
 {
-    struct cell up;
-
     if (up_stack->n > 0) {
-        up = up_stack->cells[--up_stack->n];
+        *up = up_stack->cells[--up_stack->n];
         if (up_stack->n == 0)
             free_up_stack(up_stack);
         else if (up_stack->n == up_stack->nalloc - REALLOC_INCREMENT) {
@@ -604,6 +599,4 @@ static struct cell pop_up(struct cell_stack *up_stack)
                         sizeof *up_stack->cells * up_stack->nalloc);
         }
     }
-
-    return up;
 }
