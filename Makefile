@@ -6,7 +6,7 @@ else
 	GDAL_LIBS=`gdal-config --libs`
 endif
 CFLAGS=-Wall -Werror -O3 -fopenmp $(GDAL_CFLAGS)
-LDFLAGS=-fopenmp -lm
+LDFLAGS=-O3 -fopenmp -lm
 
 all: melfp$(EXT)
 
