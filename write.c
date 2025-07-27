@@ -27,13 +27,14 @@ int write_lfp(const char *output_path, const char *layer_name,
             return 1;
     }
     else if (!(dataset =
-              GDALCreate(driver, output_path, 0, 0, 0, GDT_Unknown, NULL)))
+               GDALCreate(driver, output_path, 0, 0, 0, GDT_Unknown, NULL)))
         return 1;
 
     spat_ref = OSRNewSpatialReference(dir_map->projection);
     layer =
         GDALDatasetCreateLayer(dataset, layer_name, spat_ref, wkbLineString,
                                NULL);
+    OSRDestroySpatialReference(spat_ref);
 
     field_def = OGR_Fld_Create(oid_col, OFTInteger);
     OGR_L_CreateField(layer, field_def, TRUE);
@@ -47,6 +48,11 @@ int write_lfp(const char *output_path, const char *layer_name,
 
     oid_field = OGR_L_FindFieldIndex(layer, oid_col, TRUE);
     length_field = OGR_L_FindFieldIndex(layer, "cell_length", TRUE);
+
+    if (OGR_L_StartTransaction(layer) != OGRERR_NONE) {
+        fprintf(stderr, "Failed to start transaction\n");
+        return 1;
+    }
 
     for (i = 0; i < outlet_l->n; i++) {
         int npnts = outlet_l->northo[i] + outlet_l->ndia[i] + 1;
@@ -107,16 +113,25 @@ int write_lfp(const char *output_path, const char *layer_name,
 
             OGR_F_SetGeometry(feature, geometry);
 
-            if (OGR_L_CreateFeature(layer, feature) != OGRERR_NONE)
+            if (OGR_L_CreateFeature(layer, feature) != OGRERR_NONE) {
+                OGR_L_RollbackTransaction(layer);
+                GDALClose(dataset);
                 return 1;
+            }
 
             OGR_G_DestroyGeometry(geometry);
             OGR_F_Destroy(feature);
         }
     }
 
+    if (OGR_L_CommitTransaction(layer) != OGRERR_NONE) {
+        fprintf(stderr, "Failed to commit transaction\n");
+        OGR_L_RollbackTransaction(layer);
+        GDALClose(dataset);
+        return 1;
+    }
+
     GDALClose(dataset);
-    OSRDestroySpatialReference(spat_ref);
 
     return 0;
 }
@@ -141,12 +156,13 @@ int write_head_points(const char *output_path, const char *layer_name,
             return 1;
     }
     else if (!(dataset =
-              GDALCreate(driver, output_path, 0, 0, 0, GDT_Unknown, NULL)))
+               GDALCreate(driver, output_path, 0, 0, 0, GDT_Unknown, NULL)))
         return 1;
 
     spat_ref = OSRNewSpatialReference(dir_map->projection);
     layer =
         GDALDatasetCreateLayer(dataset, layer_name, spat_ref, wkbPoint, NULL);
+    OSRDestroySpatialReference(spat_ref);
 
     field_def = OGR_Fld_Create(oid_col, OFTInteger);
     OGR_L_CreateField(layer, field_def, TRUE);
@@ -181,6 +197,11 @@ int write_head_points(const char *output_path, const char *layer_name,
     col_field = OGR_L_FindFieldIndex(layer, "column", TRUE);
     length_field = OGR_L_FindFieldIndex(layer, "cell_length", TRUE);
 
+    if (OGR_L_StartTransaction(layer) != OGRERR_NONE) {
+        fprintf(stderr, "Failed to start transaction\n");
+        return 1;
+    }
+
     for (i = 0; i < outlet_l->n; i++) {
         int j;
 
@@ -205,16 +226,25 @@ int write_head_points(const char *output_path, const char *layer_name,
             OGR_G_AddPoint_2D(geometry, x, y);
             OGR_F_SetGeometry(feature, geometry);
 
-            if (OGR_L_CreateFeature(layer, feature) != OGRERR_NONE)
+            if (OGR_L_CreateFeature(layer, feature) != OGRERR_NONE) {
+                OGR_L_RollbackTransaction(layer);
+                GDALClose(dataset);
                 return 1;
+            }
 
             OGR_G_DestroyGeometry(geometry);
             OGR_F_Destroy(feature);
         }
     }
 
+    if (OGR_L_CommitTransaction(layer) != OGRERR_NONE) {
+        fprintf(stderr, "Failed to commit transaction\n");
+        OGR_L_RollbackTransaction(layer);
+        GDALClose(dataset);
+        return 1;
+    }
+
     GDALClose(dataset);
-    OSRDestroySpatialReference(spat_ref);
 
     return 0;
 }
