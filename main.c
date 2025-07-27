@@ -16,7 +16,7 @@
 int main(int argc, char *argv[])
 {
     int i;
-    int print_usage = 1, write_outlet = 0, find_full = 0, use_lessmem = 2;
+    int print_usage = 1, save_outlets = 0, find_full = 0, use_lessmem = 2;
     double (*recode)(double, void *) = NULL;
     int *recode_data = NULL, encoding[8];
     char *dir_path = NULL, *dir_opts = NULL,
@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
             for (j = 1; j < n && !unknown; j++) {
                 switch (argv[i][j]) {
                 case 'W':
-                    write_outlet = 1;
+                    save_outlets = 1;
                     break;
                 case 'f':
                     find_full = 1;
@@ -219,7 +219,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Missing output layers or file\n");
         print_usage = 2;
     }
-    if (!lfp_name && !heads_name && !write_outlet)
+    if (!lfp_name && !heads_name && !save_outlets)
         printf("No output vector layers specified; Not creating %s\n",
                output_path);
     else if (lfp_name && use_lessmem == 1) {
@@ -324,7 +324,7 @@ int main(int argc, char *argv[])
     printf("Number of cells: %zu\n", num_cells);
     printf("Number of outlets: %d\n", outlet_l->n);
 
-    if (write_outlet) {
+    if (save_outlets) {
         printf("Writing outlets...\n");
         gettimeofday(&start_time, NULL);
         if (write_outlets(output_path, outlet_l) > 0) {
