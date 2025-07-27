@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
     char *dir_path = NULL, *dir_opts = NULL, *outlets_path =
         NULL, *outlets_layer = NULL, *outlets_opts = NULL, *id_col =
         NULL, *output_path = NULL, *oid_col = NULL, *lfp_name =
-        NULL, *points_name = NULL, *coors_path = NULL;
+        NULL, *heads_name = NULL, *coors_path = NULL;
     int num_threads = 0;
     struct raster_map *dir_map;
     struct outlet_list *outlet_l;
@@ -146,12 +146,12 @@ int main(int argc, char *argv[])
                 case 'h':
                     if (i == argc - 1) {
                         fprintf(stderr,
-                                "-%c: Missing layer name for output longest flow path headwater points\n",
+                                "-%c: Missing layer name for output longest flow path heads\n",
                                 argv[i][j]);
                         print_usage = 2;
                         break;
                     }
-                    points_name = argv[++i];
+                    heads_name = argv[++i];
                     break;
                 case 'c':
                     if (i == argc - 1) {
@@ -214,7 +214,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (!lfp_name && !points_name && !coors_path) {
+    if (!lfp_name && !heads_name && !coors_path) {
         fprintf(stderr, "Missing output layers or file\n");
         print_usage = 2;
     }
@@ -253,10 +253,9 @@ int main(int argc, char *argv[])
         printf
             ("  -o layer\tLayer name of input outlets vector, if necessary (e.g., gpkg)\n");
         printf("  -l lfp\tLayer name for output longest flow paths\n");
+        printf("  -h heads\tLayer name for output longest flow path heads\n");
         printf
-            ("  -h heads\tLayer name for output longest flow path headwater points\n");
-        printf
-            ("  -c coors.csv\tOutput longest flow path headwater coordinates\n");
+            ("  -c coors.csv\tOutput longest flow path head coordinates file\n");
         printf("  -t threads\tNumber of threads (default OMP_NUM_THREADS)\n");
 #ifdef LOOP_THEN_TASK
         printf("  -s size\tTracing stack size (default %d)\n",
@@ -382,35 +381,33 @@ int main(int argc, char *argv[])
             append_layer = 1;
         }
 
-        if (points_name) {
-            printf("Writing longest flow path headwater points <%s>...\n",
-                   output_path);
+        if (heads_name) {
+            printf("Writing longest flow path heads <%s>...\n", output_path);
             gettimeofday(&start_time, NULL);
             if (write_head_points
-                (output_path, points_name, oid_col, outlet_l, dir_map,
+                (output_path, heads_name, oid_col, outlet_l, dir_map,
                  append_layer) > 0) {
                 fprintf(stderr,
-                        "%s: Failed to write longest flow path headwater points\n",
+                        "%s: Failed to write longest flow path heads\n",
                         output_path);
                 free_raster(dir_map);
                 free_outlet_list(outlet_l);
                 exit(EXIT_FAILURE);
             }
             gettimeofday(&end_time, NULL);
-            printf
-                ("Output time for longest flow path headwater points: %lld microsec\n",
-                 timeval_diff(NULL, &end_time, &start_time));
+            printf("Output time for longest flow path heads: %lld microsec\n",
+                   timeval_diff(NULL, &end_time, &start_time));
             append_layer = 1;
         }
 
         if (coors_path) {
             printf
-                ("Writing longest flow path headwater coordinates <%s>...\n",
+                ("Writing longest flow path head coordinates <%s>...\n",
                  coors_path);
             gettimeofday(&start_time, NULL);
             if (write_head_coors(coors_path, oid_col, outlet_l, dir_map) > 0) {
                 fprintf(stderr,
-                        "%s: Failed to write longest flow path headwater coordinates\n",
+                        "%s: Failed to write longest flow path head coordinates\n",
                         coors_path);
                 free_raster(dir_map);
                 free_outlet_list(outlet_l);
@@ -418,7 +415,7 @@ int main(int argc, char *argv[])
             }
             gettimeofday(&end_time, NULL);
             printf
-                ("Output time for longest flow path headwater coordinates: %lld microsec\n",
+                ("Output time for longest flow path head coordinates: %lld microsec\n",
                  timeval_diff(NULL, &end_time, &start_time));
         }
     }
