@@ -23,8 +23,10 @@ int main(int argc, char *argv[])
         NULL, *outlets_layer = NULL, *outlets_opts = NULL, *id_col =
         NULL, *output_path = NULL, *oid_col = NULL, *lfp_name =
         NULL, *points_name = NULL, *coors_path = NULL;
+    int num_threads = 0;
     struct raster_map *dir_map;
     struct outlet_list *outlet_l;
+    size_t num_cells;
     struct timeval start_time, end_time;
 
 #ifdef LOOP_THEN_TASK
@@ -43,36 +45,6 @@ int main(int argc, char *argv[])
 
             for (j = 1; j < n && !unknown; j++) {
                 switch (argv[i][j]) {
-                case 'o':
-                    if (i == argc - 1) {
-                        fprintf(stderr,
-                                "-%c: Missing layer name for input outlets vector\n",
-                                argv[i][j]);
-                        print_usage = 2;
-                        break;
-                    }
-                    outlets_layer = argv[++i];
-                    break;
-                case 'D':
-                    if (i == argc - 1) {
-                        fprintf(stderr,
-                                "-%c: Missing GDAL options for input direction\n",
-                                argv[i][j]);
-                        print_usage = 2;
-                        break;
-                    }
-                    dir_opts = argv[++i];
-                    break;
-                case 'O':
-                    if (i == argc - 1) {
-                        fprintf(stderr,
-                                "-%c: Missing GDAL options for input outlets\n",
-                                argv[i][j]);
-                        print_usage = 2;
-                        break;
-                    }
-                    outlets_opts = argv[++i];
-                    break;
                 case 'W':
                     write_outlet = 1;
                     break;
@@ -127,17 +99,36 @@ int main(int argc, char *argv[])
                     recode = recode_encoding;
                     recode_data = encoding;
                     break;
-#ifdef LOOP_THEN_TASK
-                case 's':
+                case 'D':
                     if (i == argc - 1) {
-                        fprintf(stderr, "-%c: Missing tracing stack size\n",
+                        fprintf(stderr,
+                                "-%c: Missing GDAL options for input direction\n",
                                 argv[i][j]);
                         print_usage = 2;
                         break;
                     }
-                    tracing_stack_size = atoi(argv[++i]);
+                    dir_opts = argv[++i];
                     break;
-#endif
+                case 'O':
+                    if (i == argc - 1) {
+                        fprintf(stderr,
+                                "-%c: Missing GDAL options for input outlets\n",
+                                argv[i][j]);
+                        print_usage = 2;
+                        break;
+                    }
+                    outlets_opts = argv[++i];
+                    break;
+                case 'o':
+                    if (i == argc - 1) {
+                        fprintf(stderr,
+                                "-%c: Missing layer name for input outlets vector\n",
+                                argv[i][j]);
+                        print_usage = 2;
+                        break;
+                    }
+                    outlets_layer = argv[++i];
+                    break;
                 case 'l':
                     if (i == argc - 1) {
                         fprintf(stderr,
@@ -168,6 +159,26 @@ int main(int argc, char *argv[])
                     }
                     coors_path = argv[++i];
                     break;
+                case 't':
+                    if (i == argc - 1) {
+                        fprintf(stderr, "-%c: Missing number of threads\n",
+                                argv[i][j]);
+                        print_usage = 2;
+                        break;
+                    }
+                    num_threads = atoi(argv[++i]);
+                    break;
+#ifdef LOOP_THEN_TASK
+                case 's':
+                    if (i == argc - 1) {
+                        fprintf(stderr, "-%c: Missing tracing stack size\n",
+                                argv[i][j]);
+                        print_usage = 2;
+                        break;
+                    }
+                    tracing_stack_size = atoi(argv[++i]);
+                    break;
+#endif
                 default:
                     unknown = 1;
                     break;
@@ -232,22 +243,36 @@ int main(int argc, char *argv[])
         printf("\t\tdegree: (0,360] (E-E CCW)\n");
         printf
             ("\t\tE,SE,S,SW,W,NW,N,NE: custom (e.g., 1,8,7,6,5,4,3,2 for taudem)\n");
+        printf("  -D opts\tComma-separated list of GDAL options for dir\n");
+        printf
+            ("  -O opts\tComma-separated list of GDAL options for outlets\n");
+        printf
+            ("  -o layer\tLayer name of input outlets vector, if necessary (e.g., gpkg)\n");
         printf("  -l lfp\tLayer name for output longest flow paths\n");
         printf
             ("  -h heads\tLayer name for output longest flow path headwater points\n");
         printf
             ("  -c coors.csv\tOutput longest flow path headwater coordinates\n");
+        printf("  -t threads\tNumber of threads (default OMP_NUM_THREADS)\n");
 #ifdef LOOP_THEN_TASK
         printf("  -s size\tTracing stack size (default %d)\n",
                tracing_stack_size);
 #endif
-        printf
-            ("  -o layer\tLayer name of input outlets vector, if necessary (e.g., gpkg)\n");
-        printf("  -D opts\tComma-separated list of GDAL options for dir\n");
-        printf
-            ("  -O opts\tComma-separated list of GDAL options for outlets\n");
         exit(print_usage == 1 ? EXIT_SUCCESS : EXIT_FAILURE);
     }
+
+    if (num_threads == 0)
+        num_threads = omp_get_max_threads();
+    else {
+        if (num_threads < 0) {
+            num_threads += omp_get_num_procs();
+            if (num_threads < 1)
+                num_threads = 1;
+        }
+        omp_set_num_threads(num_threads);
+    }
+
+    printf("Using %d threads...\n", num_threads);
 
     GDALAllRegister();
 
@@ -288,6 +313,10 @@ int main(int argc, char *argv[])
     printf("Input time for outlets: %lld microsec\n",
            timeval_diff(NULL, &end_time, &start_time));
 
+    num_cells = (size_t)dir_map->nrows * dir_map->ncols;
+    printf("Number of cells: %zu\n", num_cells);
+    printf("Number of outlets: %d\n", outlet_l->n);
+
     if (write_outlet) {
         printf("Writing outlets...\n");
         gettimeofday(&start_time, NULL);
@@ -306,30 +335,18 @@ int main(int argc, char *argv[])
         int append_layer = 0;
         int num_lfp = 0;
 
-#pragma omp parallel
-#pragma omp single
-        {
-            size_t num_cells = (size_t)dir_map->nrows * dir_map->ncols;
-            int num_threads = omp_get_num_threads();
-
-            printf("Number of cells: %zu\n", num_cells);
-            printf("Number of outlets: %d\n", outlet_l->n);
-
 #ifdef LOOP_THEN_TASK
-            if (tracing_stack_size <= 0) {
-                printf
-                    ("Guessing tracing stack size using sqrt(nrows * ncols) / num_threads...\n");
-                tracing_stack_size =
-                    sqrt((size_t)dir_map->nrows * dir_map->ncols) /
-                    num_threads;
-            }
-
-            printf("Tracing stack size for loop-then-task: %d\n",
-                   tracing_stack_size);
-#endif
-            printf("Finding longest flow paths using %d thread(s)...\n",
-                   num_threads);
+        if (tracing_stack_size <= 0) {
+            printf
+                ("Guessing tracing stack size using sqrt(nrows * ncols) / num_threads...\n");
+            tracing_stack_size =
+                sqrt((size_t)dir_map->nrows * dir_map->ncols) / num_threads;
         }
+
+        printf("Tracing stack size for loop-then-task: %d\n",
+               tracing_stack_size);
+#endif
+        printf("Finding longest flow paths...\n");
 
         gettimeofday(&start_time, NULL);
         lfp(dir_map, outlet_l, find_full, use_lessmem);
