@@ -287,10 +287,9 @@ int main(int argc, char *argv[])
     gettimeofday(&start_time, NULL);
     if (recode) {
         printf("Converting flow direction encoding...\n");
-        if (!
-            (dir_map =
-             read_raster(dir_path, dir_opts, RASTER_MAP_TYPE_BYTE, 0, recode,
-                         recode_data))) {
+        if (!(dir_map =
+              read_raster(dir_path, dir_opts, RASTER_MAP_TYPE_BYTE, 0, recode,
+                          recode_data))) {
             fprintf(stderr, "%s: Failed to read flow direction raster\n",
                     dir_path);
             exit(EXIT_FAILURE);
@@ -309,10 +308,9 @@ int main(int argc, char *argv[])
 
     printf("Reading outlets <%s>...\n", outlets_path);
     gettimeofday(&start_time, NULL);
-    if (!
-        (outlet_l =
-         read_outlets(outlets_path, outlets_layer, outlets_opts, id_col,
-                      dir_map, find_full))) {
+    if (!(outlet_l =
+          read_outlets(outlets_path, outlets_layer, outlets_opts, id_col,
+                       dir_map, find_full))) {
         fprintf(stderr, "%s: Failed to read outlets\n", outlets_path);
         exit(EXIT_FAILURE);
     }

@@ -12,9 +12,8 @@ void print_raster(const char *path, const char *opts, const char *null_str,
     char format[128], *type_format;
     int row, col;
 
-    if (!
-        (rast_map =
-         read_raster(path, opts, RASTER_MAP_TYPE_AUTO, 1, NULL, NULL)))
+    if (!(rast_map =
+          read_raster(path, opts, RASTER_MAP_TYPE_AUTO, 1, NULL, NULL)))
         return;
 
     switch (rast_map->type) {
@@ -347,10 +346,9 @@ struct raster_map *read_raster(const char *path, const char *opts, int type,
         }
     }
 
-    if (!
-        (dataset =
-         GDALOpenEx(path, GDAL_OF_RASTER | GDAL_OF_THREAD_SAFE, NULL, ds_opts,
-                    NULL)))
+    if (!(dataset =
+          GDALOpenEx(path, GDAL_OF_RASTER | GDAL_OF_THREAD_SAFE, NULL,
+                     ds_opts, NULL)))
         return NULL;
 
     rast_map = calloc(1, sizeof *rast_map);
@@ -804,10 +802,9 @@ int write_raster(const char *path, struct raster_map *rast_map, int type)
             break;
         }
 
-    if (!
-        (dataset =
-         GDALCreate(driver, path, rast_map->ncols, rast_map->nrows, 1,
-                    gdt_type, options)))
+    if (!(dataset =
+          GDALCreate(driver, path, rast_map->ncols, rast_map->nrows, 1,
+                     gdt_type, options)))
         return 3;
 
     GDALSetProjection(dataset, rast_map->projection);

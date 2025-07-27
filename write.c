@@ -26,8 +26,7 @@ int write_lfp(const char *output_path, const char *layer_name,
               GDALOpenEx(output_path, GDAL_OF_VECTOR, NULL, NULL, NULL)))
             return 1;
     }
-    else if (!
-             (dataset =
+    else if (!(dataset =
               GDALCreate(driver, output_path, 0, 0, 0, GDT_Unknown, NULL)))
         return 1;
 
@@ -141,8 +140,7 @@ int write_head_points(const char *output_path, const char *layer_name,
                          NULL, NULL)))
             return 1;
     }
-    else if (!
-             (dataset =
+    else if (!(dataset =
               GDALCreate(driver, output_path, 0, 0, 0, GDT_Unknown, NULL)))
         return 1;
 
