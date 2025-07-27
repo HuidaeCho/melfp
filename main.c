@@ -16,12 +16,13 @@
 int main(int argc, char *argv[])
 {
     int i;
-    int print_usage = 1, write_outlet = 0, find_full = 0, use_lessmem =
-        2, output = 1;
+    int print_usage = 1, write_outlet = 0, find_full = 0, use_lessmem = 2;
     double (*recode)(double, void *) = NULL;
     int *recode_data = NULL, encoding[8];
-    char *dir_path = NULL, *outlets_path = NULL, *id_col =
-        NULL, *output_path = NULL, *coors_path = NULL;
+    char *dir_path = NULL, *dir_opts = NULL, *outlets_path =
+        NULL, *outlets_layer = NULL, *outlets_opts = NULL, *id_col =
+        NULL, *output_path = NULL, *oid_col = NULL, *lfp_name =
+        NULL, *points_name = NULL, *coors_path = NULL;
     struct raster_map *dir_map;
     struct outlet_list *outlet_l;
     struct timeval start_time, end_time;
@@ -43,6 +44,36 @@ int main(int argc, char *argv[])
             for (j = 1; j < n && !unknown; j++) {
                 switch (argv[i][j]) {
                 case 'o':
+                    if (i == argc - 1) {
+                        fprintf(stderr,
+                                "-%c: Missing layer name for input outlets vector\n",
+                                argv[i][j]);
+                        print_usage = 2;
+                        break;
+                    }
+                    outlets_layer = argv[++i];
+                    break;
+                case 'D':
+                    if (i == argc - 1) {
+                        fprintf(stderr,
+                                "-%c: Missing GDAL options for input direction\n",
+                                argv[i][j]);
+                        print_usage = 2;
+                        break;
+                    }
+                    dir_opts = argv[++i];
+                    break;
+                case 'O':
+                    if (i == argc - 1) {
+                        fprintf(stderr,
+                                "-%c: Missing GDAL options for input outlets\n",
+                                argv[i][j]);
+                        print_usage = 2;
+                        break;
+                    }
+                    outlets_opts = argv[++i];
+                    break;
+                case 'W':
                     write_outlet = 1;
                     break;
                 case 'f':
@@ -107,14 +138,27 @@ int main(int argc, char *argv[])
                     tracing_stack_size = atoi(argv[++i]);
                     break;
 #endif
-                case 'L':
-                    output &= ~1;
+                case 'l':
+                    if (i == argc - 1) {
+                        fprintf(stderr,
+                                "-%c: Missing layer name for output longest flow paths\n",
+                                argv[i][j]);
+                        print_usage = 2;
+                        break;
+                    }
+                    lfp_name = argv[++i];
                     break;
                 case 'p':
-                    output |= 2;
+                    if (i == argc - 1) {
+                        fprintf(stderr,
+                                "-%c: Missing layer name for output longest flow path headwater points\n",
+                                argv[i][j]);
+                        print_usage = 2;
+                        break;
+                    }
+                    points_name = argv[++i];
                     break;
                 case 'c':
-                    output |= 4;
                     if (i == argc - 1) {
                         fprintf(stderr,
                                 "-%c: Missing output coordinates path\n",
@@ -130,7 +174,7 @@ int main(int argc, char *argv[])
                 }
             }
             if (unknown) {
-                fprintf(stderr, "-%c: Unknown flag\n", argv[i][j]);
+                fprintf(stderr, "-%c: Unknown flag\n", argv[i][--j]);
                 print_usage = 2;
                 break;
             }
@@ -141,8 +185,10 @@ int main(int argc, char *argv[])
             outlets_path = argv[i];
         else if (!id_col)
             id_col = argv[i];
-        else if (!output_path) {
+        else if (!output_path)
             output_path = argv[i];
+        else if (!oid_col) {
+            oid_col = argv[i];
             print_usage = 0;
         }
         else {
@@ -153,11 +199,11 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (!output) {
-        fprintf(stderr, "Missing output formats\n");
+    if (!lfp_name && !points_name && !coors_path) {
+        fprintf(stderr, "Missing output layers or file\n");
         print_usage = 2;
     }
-    else if (output & 1 && use_lessmem == 1) {
+    else if (lfp_name && use_lessmem == 1) {
         fprintf(stderr,
                 "Forced to preserve input data for vector routing; Ignoring -P\n");
         use_lessmem = 2;
@@ -166,13 +212,18 @@ int main(int argc, char *argv[])
     if (print_usage) {
         if (print_usage == 2)
             printf("\n");
-        printf
-            ("Usage: melfp OPTIONS fdr.tif outlets.shp id_col output.gpkg\n");
+        printf("Usage: melfp OPTIONS dir outlets id_col output oid_col\n");
         printf("\n");
-        printf("  -o\t\tWrite outlet rows and columns, and exit\n");
+        printf
+            ("  dir\t\tInput flow direction raster (e.g., gpkg:file.gpkg:layer)\n");
+        printf("  outlets\tInput outlets vector\n");
+        printf("  id_col\tInput column for outlet IDs\n");
+        printf("  output\tOutput GeoPackage or output text file with -W\n");
+        printf("  oid_col\tOutput column for outlet IDs\n");
+        printf("  -W\t\tWrite outlet rows and columns, and exit\n");
         printf("  -f\t\tFind full longest flow paths\n");
         printf("  -m\t\tUse more memory\n");
-        printf("  -P\t\tDo not preserve input data (faster with -L)\n");
+        printf("  -P\t\tDo not preserve input data (faster without -l)\n");
         printf("  -e encoding\tDirection encoding\n");
         printf
             ("\t\tpower2 (default): 2^0-7 CW from E (e.g., r.terraflow, ArcGIS)\n");
@@ -181,20 +232,20 @@ int main(int argc, char *argv[])
         printf("\t\tdegree: (0,360] (E-E CCW)\n");
         printf
             ("\t\tE,SE,S,SW,W,NW,N,NE: custom (e.g., 1,8,7,6,5,4,3,2 for taudem)\n");
-        printf("  -L\t\tDo not output longest flow path lines\n");
-        printf("  -p\t\tOutput longest flow path headwater points\n");
+        printf("  -l lfp\tLayer name for output longest flow paths\n");
+        printf
+            ("  -p heads\tLayer name for output longest flow path headwater points\n");
         printf
             ("  -c coors.csv\tOutput longest flow path headwater coordinates\n");
 #ifdef LOOP_THEN_TASK
         printf("  -s size\tTracing stack size (default %d)\n",
                tracing_stack_size);
 #endif
-        printf("  fdr.tif\tInput flow direction GeoTIFF\n");
-        printf("  outlets.shp\tInput outlets Shapefile\n");
-        printf("  id_col\tID column\n");
         printf
-            ("  output.gpkg\tOutput longest flow path GeoPackage\n"
-             "  \t\tOutput text file for outlet rows and columns with -o\n");
+            ("  -o layer\tLayer name of input outlets vector, if necessary (e.g., gpkg)\n");
+        printf("  -D opts\tComma-separated list of GDAL options for dir\n");
+        printf
+            ("  -O opts\tComma-separated list of GDAL options for outlets\n");
         exit(print_usage == 1 ? EXIT_SUCCESS : EXIT_FAILURE);
     }
 
@@ -204,15 +255,18 @@ int main(int argc, char *argv[])
     gettimeofday(&start_time, NULL);
     if (recode) {
         printf("Converting flow direction encoding...\n");
-        if (!(dir_map = read_raster(dir_path, RASTER_MAP_TYPE_BYTE, 0, recode,
-                                    recode_data))) {
+        if (!
+            (dir_map =
+             read_raster(dir_path, dir_opts, RASTER_MAP_TYPE_BYTE, 0, recode,
+                         recode_data))) {
             fprintf(stderr, "%s: Failed to read flow direction raster\n",
                     dir_path);
             exit(EXIT_FAILURE);
         }
     }
     else if (!(dir_map =
-               read_raster(dir_path, RASTER_MAP_TYPE_BYTE, 0, NULL, NULL))) {
+               read_raster(dir_path, dir_opts, RASTER_MAP_TYPE_BYTE, 0, NULL,
+                           NULL))) {
         fprintf(stderr, "%s: Failed to read flow direction raster\n",
                 dir_path);
         exit(EXIT_FAILURE);
@@ -223,7 +277,10 @@ int main(int argc, char *argv[])
 
     printf("Reading outlets <%s>...\n", outlets_path);
     gettimeofday(&start_time, NULL);
-    if (!(outlet_l = read_outlets(outlets_path, id_col, dir_map, find_full))) {
+    if (!
+        (outlet_l =
+         read_outlets(outlets_path, outlets_layer, outlets_opts, id_col,
+                      dir_map, find_full))) {
         fprintf(stderr, "%s: Failed to read outlets\n", outlets_path);
         exit(EXIT_FAILURE);
     }
@@ -285,11 +342,12 @@ int main(int argc, char *argv[])
             num_lfp += outlet_l->head_pl[i].n;
         printf("Number of longest flow paths found: %d\n", num_lfp);
 
-        if (output & 1) {
+        if (lfp_name) {
             printf("Writing longest flow path lines <%s>...\n", output_path);
             gettimeofday(&start_time, NULL);
             if (write_lfp
-                (output_path, id_col, outlet_l, dir_map, append_layer) > 0) {
+                (output_path, lfp_name, oid_col, outlet_l, dir_map,
+                 append_layer) > 0) {
                 fprintf(stderr,
                         "%s: Failed to write longest flow path lines\n",
                         output_path);
@@ -303,12 +361,13 @@ int main(int argc, char *argv[])
             append_layer = 1;
         }
 
-        if (output & 2) {
+        if (points_name) {
             printf("Writing longest flow path headwater points <%s>...\n",
                    output_path);
             gettimeofday(&start_time, NULL);
             if (write_head_points
-                (output_path, id_col, outlet_l, dir_map, append_layer) > 0) {
+                (output_path, points_name, oid_col, outlet_l, dir_map,
+                 append_layer) > 0) {
                 fprintf(stderr,
                         "%s: Failed to write longest flow path headwater points\n",
                         output_path);
@@ -323,12 +382,12 @@ int main(int argc, char *argv[])
             append_layer = 1;
         }
 
-        if (output & 4) {
+        if (coors_path) {
             printf
                 ("Writing longest flow path headwater coordinates <%s>...\n",
                  coors_path);
             gettimeofday(&start_time, NULL);
-            if (write_head_coors(coors_path, id_col, outlet_l, dir_map) > 0) {
+            if (write_head_coors(coors_path, oid_col, outlet_l, dir_map) > 0) {
                 fprintf(stderr,
                         "%s: Failed to write longest flow path headwater coordinates\n",
                         coors_path);

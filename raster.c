@@ -4,14 +4,17 @@
 #include <omp.h>
 #include "raster.h"
 
-void print_raster(const char *path, const char *null_str, const char *fmt)
+void print_raster(const char *path, const char *opts, const char *null_str,
+                  const char *fmt)
 {
     struct raster_map *rast_map;
     int width;
     char format[128], *type_format;
     int row, col;
 
-    if (!(rast_map = read_raster(path, RASTER_MAP_TYPE_AUTO, 1, NULL, NULL)))
+    if (!
+        (rast_map =
+         read_raster(path, opts, RASTER_MAP_TYPE_AUTO, 1, NULL, NULL)))
         return;
 
     switch (rast_map->type) {
@@ -311,11 +314,13 @@ void copy_raster_metadata(struct raster_map *dest_map,
     dest_map->dy = src_map->dy;
 }
 
-struct raster_map *read_raster(const char *path, int type, int get_stats,
-                               double (*recode)(double, void *),
+struct raster_map *read_raster(const char *path, const char *opts, int type,
+                               int get_stats, double (*recode)(double,
+                                                               void *),
                                void *recode_data)
 {
     struct raster_map *rast_map;
+    const char **ds_opts = NULL;
     GDALDatasetH *datasets, dataset;
     GDALRasterBandH *bands, band;
     GDALDataType gdt_type;
@@ -323,11 +328,31 @@ struct raster_map *read_raster(const char *path, int type, int get_stats,
     int row;
     int error = 0;
 
+    if (opts) {
+        char *o, *p;
+        int n;
+
+        strcpy((o = malloc(strlen(opts) + 1)), opts);
+        for (p = o, n = 2; *p; p++)
+            if (*p == ',')
+                n++;
+        ds_opts = malloc(sizeof *ds_opts * n);
+
+        for (p = o, n = 0; *p; p++) {
+            if (p == o || *(p - 1) == ',') {
+                ds_opts[n] = p;
+                if (p > o)
+                    *(p - 1) = 0;
+            }
+        }
+    }
+
 #pragma omp parallel
     {
 #pragma omp single
         datasets = malloc(sizeof *datasets * omp_get_num_threads());
-        datasets[omp_get_thread_num()] = GDALOpen(path, GA_ReadOnly);
+        datasets[omp_get_thread_num()] =
+            GDALOpenEx(path, GDAL_OF_RASTER, NULL, ds_opts, NULL);
     }
 
     if (!(dataset = datasets[0])) {

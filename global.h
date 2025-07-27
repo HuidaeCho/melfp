@@ -75,7 +75,8 @@ void free_point_list(struct point_list *);
 void add_point(struct point_list *, int, int);
 
 /* outlets.c */
-struct outlet_list *read_outlets(char *, char *, struct raster_map *, int);
+struct outlet_list *read_outlets(const char *, const char *, const char *,
+                                 const char *, struct raster_map *, int);
 int write_outlets(const char *, struct outlet_list *);
 
 /* lfp.c */
@@ -88,10 +89,10 @@ void lfp_lessmem(struct raster_map *, struct outlet_list *, int, int);
 void lfp_moremem(struct raster_map *, struct outlet_list *, int);
 
 /* write.c */
-int write_lfp(const char *, const char *, struct outlet_list *,
+int write_lfp(const char *, const char *, const char *, struct outlet_list *,
               struct raster_map *, int);
-int write_head_points(const char *, const char *, struct outlet_list *,
-                      struct raster_map *, int);
+int write_head_points(const char *, const char *, const char *,
+                      struct outlet_list *, struct raster_map *, int);
 int write_head_coors(const char *, const char *, struct outlet_list *,
                      struct raster_map *);
 

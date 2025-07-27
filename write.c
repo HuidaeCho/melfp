@@ -8,9 +8,9 @@
 #define DIR(row, col) dir_map->cells.byte[INDEX(row, col)]
 #define IS_DIR_NULL(row, col) (DIR(row, col) == DIR_NULL)
 
-int write_lfp(const char *output_path, const char *id_col,
-              struct outlet_list *outlet_l, struct raster_map *dir_map,
-              int append_layer)
+int write_lfp(const char *output_path, const char *layer_name,
+              const char *oid_col, struct outlet_list *outlet_l,
+              struct raster_map *dir_map, int append_layer)
 {
     GDALDriverH driver = GDALGetDriverByName("GPKG");
     GDALDatasetH dataset;
@@ -18,7 +18,7 @@ int write_lfp(const char *output_path, const char *id_col,
     OGRLayerH layer;
     OGRFieldDefnH field_def;
     OGRFeatureDefnH layer_def;
-    int lfp_id_field, length_field;
+    int oid_field, length_field;
     int i;
 
     if (append_layer) {
@@ -33,20 +33,21 @@ int write_lfp(const char *output_path, const char *id_col,
 
     spat_ref = OSRNewSpatialReference(dir_map->projection);
     layer =
-        GDALDatasetCreateLayer(dataset, "lfp", spat_ref, wkbLineString, NULL);
+        GDALDatasetCreateLayer(dataset, layer_name, spat_ref, wkbLineString,
+                               NULL);
 
-    field_def = OGR_Fld_Create("lfp_id", OFTInteger);
+    field_def = OGR_Fld_Create(oid_col, OFTInteger);
     OGR_L_CreateField(layer, field_def, TRUE);
     OGR_Fld_Destroy(field_def);
 
-    field_def = OGR_Fld_Create("length", OFTReal);
+    field_def = OGR_Fld_Create("cell_length", OFTReal);
     OGR_L_CreateField(layer, field_def, TRUE);
     OGR_Fld_Destroy(field_def);
 
     layer_def = OGR_L_GetLayerDefn(layer);
 
-    lfp_id_field = OGR_L_FindFieldIndex(layer, "lfp_id", TRUE);
-    length_field = OGR_L_FindFieldIndex(layer, "length", TRUE);
+    oid_field = OGR_L_FindFieldIndex(layer, oid_col, TRUE);
+    length_field = OGR_L_FindFieldIndex(layer, "cell_length", TRUE);
 
     for (i = 0; i < outlet_l->n; i++) {
         int npnts = outlet_l->northo[i] + outlet_l->ndia[i] + 1;
@@ -61,7 +62,7 @@ int write_lfp(const char *output_path, const char *id_col,
             OGRGeometryH geometry;
 
             feature = OGR_F_Create(layer_def);
-            OGR_F_SetFieldInteger(feature, lfp_id_field, outlet_l->id[i]);
+            OGR_F_SetFieldInteger(feature, oid_field, outlet_l->id[i]);
             OGR_F_SetFieldDouble(feature, length_field, outlet_l->lflen[i]);
 
             geometry = OGR_G_CreateGeometry(wkbLineString);
@@ -106,8 +107,10 @@ int write_lfp(const char *output_path, const char *id_col,
             } while (pnt < npnts);
 
             OGR_F_SetGeometry(feature, geometry);
+
             if (OGR_L_CreateFeature(layer, feature) != OGRERR_NONE)
                 return 1;
+
             OGR_G_DestroyGeometry(geometry);
             OGR_F_Destroy(feature);
         }
@@ -119,8 +122,8 @@ int write_lfp(const char *output_path, const char *id_col,
     return 0;
 }
 
-int write_head_points(const char *output_path, const char *id_col,
-                      struct outlet_list *outlet_l,
+int write_head_points(const char *output_path, const char *layer_name,
+                      const char *oid_col, struct outlet_list *outlet_l,
                       struct raster_map *dir_map, int append_layer)
 {
     GDALDriverH driver = GDALGetDriverByName("GPKG");
@@ -129,7 +132,7 @@ int write_head_points(const char *output_path, const char *id_col,
     OGRLayerH layer;
     OGRFieldDefnH field_def;
     OGRFeatureDefnH layer_def;
-    int lfp_id_field, x_field, y_field, length_field;
+    int oid_field, x_field, y_field, row_field, col_field, length_field;
     int i;
 
     if (append_layer) {
@@ -145,10 +148,9 @@ int write_head_points(const char *output_path, const char *id_col,
 
     spat_ref = OSRNewSpatialReference(dir_map->projection);
     layer =
-        GDALDatasetCreateLayer(dataset, "lfp_heads", spat_ref, wkbPoint,
-                               NULL);
+        GDALDatasetCreateLayer(dataset, layer_name, spat_ref, wkbPoint, NULL);
 
-    field_def = OGR_Fld_Create("lfp_id", OFTInteger);
+    field_def = OGR_Fld_Create(oid_col, OFTInteger);
     OGR_L_CreateField(layer, field_def, TRUE);
     OGR_Fld_Destroy(field_def);
 
@@ -160,39 +162,54 @@ int write_head_points(const char *output_path, const char *id_col,
     OGR_L_CreateField(layer, field_def, TRUE);
     OGR_Fld_Destroy(field_def);
 
-    field_def = OGR_Fld_Create("length", OFTReal);
+    field_def = OGR_Fld_Create("row", OFTInteger);
+    OGR_L_CreateField(layer, field_def, TRUE);
+    OGR_Fld_Destroy(field_def);
+
+    field_def = OGR_Fld_Create("column", OFTInteger);
+    OGR_L_CreateField(layer, field_def, TRUE);
+    OGR_Fld_Destroy(field_def);
+
+    field_def = OGR_Fld_Create("cell_length", OFTReal);
     OGR_L_CreateField(layer, field_def, TRUE);
     OGR_Fld_Destroy(field_def);
 
     layer_def = OGR_L_GetLayerDefn(layer);
 
-    lfp_id_field = OGR_L_FindFieldIndex(layer, "lfp_id", TRUE);
+    oid_field = OGR_L_FindFieldIndex(layer, oid_col, TRUE);
     x_field = OGR_L_FindFieldIndex(layer, "x", TRUE);
     y_field = OGR_L_FindFieldIndex(layer, "y", TRUE);
-    length_field = OGR_L_FindFieldIndex(layer, "length", TRUE);
+    row_field = OGR_L_FindFieldIndex(layer, "row", TRUE);
+    col_field = OGR_L_FindFieldIndex(layer, "column", TRUE);
+    length_field = OGR_L_FindFieldIndex(layer, "cell_length", TRUE);
 
     for (i = 0; i < outlet_l->n; i++) {
         int j;
 
         for (j = 0; j < outlet_l->head_pl[i].n; j++) {
+            int row = outlet_l->head_pl[i].row[j];
+            int col = outlet_l->head_pl[i].col[j];
             double x, y;
             OGRFeatureH feature;
             OGRGeometryH geometry;
 
-            calc_coors(dir_map, outlet_l->head_pl[i].row[j],
-                       outlet_l->head_pl[i].col[j], &x, &y);
+            calc_coors(dir_map, row, col, &x, &y);
 
             feature = OGR_F_Create(layer_def);
-            OGR_F_SetFieldInteger(feature, lfp_id_field, outlet_l->id[i]);
+            OGR_F_SetFieldInteger(feature, oid_field, outlet_l->id[i]);
             OGR_F_SetFieldDouble(feature, x_field, x);
             OGR_F_SetFieldDouble(feature, y_field, y);
+            OGR_F_SetFieldInteger(feature, row_field, row);
+            OGR_F_SetFieldInteger(feature, col_field, col);
             OGR_F_SetFieldDouble(feature, length_field, outlet_l->lflen[i]);
 
             geometry = OGR_G_CreateGeometry(wkbPoint);
             OGR_G_AddPoint_2D(geometry, x, y);
             OGR_F_SetGeometry(feature, geometry);
+
             if (OGR_L_CreateFeature(layer, feature) != OGRERR_NONE)
                 return 1;
+
             OGR_G_DestroyGeometry(geometry);
             OGR_F_Destroy(feature);
         }
@@ -204,7 +221,7 @@ int write_head_points(const char *output_path, const char *id_col,
     return 0;
 }
 
-int write_head_coors(const char *heads_path, const char *id_col,
+int write_head_coors(const char *heads_path, const char *oid_col,
                      struct outlet_list *outlet_l, struct raster_map *dir_map)
 {
     FILE *fp;
@@ -213,7 +230,7 @@ int write_head_coors(const char *heads_path, const char *id_col,
     if (!(fp = fopen(heads_path, "w")))
         return 1;
 
-    fprintf(fp, "%s,lfp_id,x,y,row,column,length\n", id_col);
+    fprintf(fp, "%s,count,x,y,row,column,cell_length\n", oid_col);
 
     for (i = 0; i < outlet_l->n; i++) {
         int j;
