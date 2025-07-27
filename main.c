@@ -27,11 +27,15 @@ int main(int argc, char *argv[])
     struct raster_map *dir_map;
     struct outlet_list *outlet_l;
     size_t num_cells;
-    struct timeval start_time, end_time;
+    struct timeval first_time, start_time, end_time;
 
 #ifdef LOOP_THEN_TASK
     char *p;
+#endif
 
+    gettimeofday(&first_time, NULL);
+
+#ifdef LOOP_THEN_TASK
     if ((p = getenv("MELFP_TRACING_STACK_SIZE")))
         tracing_stack_size = atoi(p);
     else
@@ -421,6 +425,10 @@ int main(int argc, char *argv[])
 
     free_raster(dir_map);
     free_outlet_list(outlet_l);
+
+    gettimeofday(&end_time, NULL);
+    printf("Total elapsed time: %lld microsec\n",
+           timeval_diff(NULL, &end_time, &first_time));
 
     exit(EXIT_SUCCESS);
 }
