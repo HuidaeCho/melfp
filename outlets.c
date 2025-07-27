@@ -35,19 +35,16 @@ struct outlet_list *read_outlets(const char *outlets_path,
         }
     }
 
-    if (!
-        (dataset =
-         GDALOpenEx(outlets_path, GDAL_OF_VECTOR, NULL, ds_opts, NULL)))
+    if (!(dataset =
+          GDALOpenEx(outlets_path, GDAL_OF_VECTOR, NULL, ds_opts, NULL)))
         return NULL;
 
     if (!GDALDatasetGetLayerCount(dataset))
         return NULL;
 
-    if (!
-        (layer =
-         layer_name ? GDALDatasetGetLayerByName(dataset,
-                                                layer_name) :
-         GDALDatasetGetLayer(dataset, 0)))
+    if (!(layer =
+          layer_name ? GDALDatasetGetLayerByName(dataset, layer_name) :
+          GDALDatasetGetLayer(dataset, 0)))
         return NULL;
 
     init_outlet_list(outlet_l);
@@ -57,13 +54,12 @@ struct outlet_list *read_outlets(const char *outlets_path,
         id_field_idx = -1;
     else {
         OGRFieldDefnH id_field_def;
-        int id_field_type;
 
         if ((id_field_idx = OGR_FD_GetFieldIndex(feature_def, id_col)) < 0)
             return NULL;
 
         id_field_def = OGR_FD_GetFieldDefn(feature_def, id_field_idx);
-        if ((id_field_type = OGR_Fld_GetType(id_field_def)) != OFTInteger)
+        if (OGR_Fld_GetType(id_field_def) != OFTInteger)
             return NULL;
     }
 
@@ -79,8 +75,8 @@ struct outlet_list *read_outlets(const char *outlets_path,
 
             x = OGR_G_GetX(geometry, 0);
             y = OGR_G_GetY(geometry, 0);
-            id = id_field_idx >= 0 ? OGR_F_GetFieldAsInteger(feature,
-                                                             id_field_idx) :
+            id = id_field_idx >= 0 ?
+                OGR_F_GetFieldAsInteger(feature, id_field_idx) :
                 OGR_F_GetFID(feature);
 
             calc_row_col(dir_map, x, y, &row, &col);
