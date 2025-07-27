@@ -235,7 +235,7 @@ int main(int argc, char *argv[])
         printf("  -f\t\tFind full longest flow paths\n");
         printf("  -m\t\tUse more memory\n");
         printf("  -P\t\tDo not preserve input data (faster without -l)\n");
-        printf("  -e encoding\tDirection encoding\n");
+        printf("  -e encoding\tInput flow direction encoding\n");
         printf
             ("\t\tpower2 (default): 2^0-7 CW from E (e.g., r.terraflow, ArcGIS)\n");
         printf("\t\ttaudem: 1-8 (E-SE CCW) (e.g., d8flowdir)\n");
