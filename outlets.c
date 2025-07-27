@@ -4,7 +4,7 @@
 #include "global.h"
 
 struct outlet_list *read_outlets(const char *outlets_path,
-                                 const char *outlets_layer, const char *opts,
+                                 const char *layer_name, const char *opts,
                                  const char *id_col,
                                  struct raster_map *dir_map, int find_full)
 {
@@ -43,10 +43,11 @@ struct outlet_list *read_outlets(const char *outlets_path,
     if (!GDALDatasetGetLayerCount(dataset))
         return NULL;
 
-    if (!(layer =
-          outlets_layer ? GDALDatasetGetLayerByName(dataset,
-                                                    outlets_layer) :
-          GDALDatasetGetLayer(dataset, 0)))
+    if (!
+        (layer =
+         layer_name ? GDALDatasetGetLayerByName(dataset,
+                                                layer_name) :
+         GDALDatasetGetLayer(dataset, 0)))
         return NULL;
 
     init_outlet_list(outlet_l);
