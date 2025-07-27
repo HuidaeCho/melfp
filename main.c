@@ -19,10 +19,11 @@ int main(int argc, char *argv[])
     int print_usage = 1, write_outlet = 0, find_full = 0, use_lessmem = 2;
     double (*recode)(double, void *) = NULL;
     int *recode_data = NULL, encoding[8];
-    char *dir_path = NULL, *dir_opts = NULL, *outlets_path =
-        NULL, *outlets_layer = NULL, *outlets_opts = NULL, *id_col =
-        NULL, *output_path = NULL, *oid_col = NULL, *lfp_name =
-        NULL, *heads_name = NULL, *coors_path = NULL;
+    char *dir_path = NULL, *dir_opts = NULL,
+        *outlets_path = NULL, *outlets_layer = NULL, *outlets_opts = NULL,
+        *id_col = NULL,
+        *output_path = NULL, *oid_col = NULL,
+        *lfp_name = NULL, *heads_name = NULL, *coors_path = NULL;
     int num_threads = 0;
     struct raster_map *dir_map;
     struct outlet_list *outlet_l;
