@@ -321,8 +321,8 @@ struct raster_map *read_raster(const char *path, const char *opts, int type,
 {
     struct raster_map *rast_map;
     const char **ds_opts = NULL;
-    GDALDatasetH *datasets, dataset;
-    GDALRasterBandH *bands, band;
+    GDALDatasetH dataset;
+    GDALRasterBandH band;
     GDALDataType gdt_type;
     size_t row_size;
     int row;
@@ -347,18 +347,11 @@ struct raster_map *read_raster(const char *path, const char *opts, int type,
         }
     }
 
-#pragma omp parallel
-    {
-#pragma omp single
-        datasets = malloc(sizeof *datasets * omp_get_num_threads());
-        datasets[omp_get_thread_num()] =
-            GDALOpenEx(path, GDAL_OF_RASTER, NULL, ds_opts, NULL);
-    }
-
-    if (!(dataset = datasets[0])) {
-        free(datasets);
+    if (!
+        (dataset =
+         GDALOpenEx(path, GDAL_OF_RASTER | GDAL_OF_THREAD_SAFE, NULL, ds_opts,
+                    NULL)))
         return NULL;
-    }
 
     rast_map = calloc(1, sizeof *rast_map);
     rast_map->nrows = GDALGetRasterYSize(dataset);
@@ -368,15 +361,8 @@ struct raster_map *read_raster(const char *path, const char *opts, int type,
     rast_map->dx = rast_map->geotransform[1];
     rast_map->dy = -rast_map->geotransform[5];
 
-#pragma omp parallel
-    {
-#pragma omp single
-        bands = malloc(sizeof *bands * omp_get_num_threads());
-        bands[omp_get_thread_num()] =
-            GDALGetRasterBand(datasets[omp_get_thread_num()], 1);
-    }
+    band = GDALGetRasterBand(dataset, 1);
 
-    band = bands[0];
     if (get_stats) {
         rast_map->has_stats = 1;
         GDALGetRasterStatistics(band, 0, 1, &rast_map->min, &rast_map->max,
@@ -454,7 +440,7 @@ struct raster_map *read_raster(const char *path, const char *opts, int type,
 #pragma omp parallel for schedule(dynamic)
             for (row = 0; row < rast_map->nrows; row++) {
                 if (GDALRasterIO
-                    (bands[omp_get_thread_num()], GF_Read, 0, row,
+                    (band, GF_Read, 0, row,
                      rast_map->ncols, 1,
                      (char *)rast_map->cells.v + row * row_size,
                      rast_map->ncols, 1, gdt_type, 0, 0) == CE_None) {
@@ -562,7 +548,7 @@ struct raster_map *read_raster(const char *path, const char *opts, int type,
                 int thread_num = omp_get_thread_num();
 
                 if (GDALRasterIO
-                    (bands[thread_num], GF_Read, 0, row,
+                    (band, GF_Read, 0, row,
                      rast_map->ncols, 1, cells[thread_num].v, rast_map->ncols,
                      1, gdt_type, 0, 0) == CE_None) {
                     int col;
@@ -728,7 +714,7 @@ struct raster_map *read_raster(const char *path, const char *opts, int type,
 #pragma omp parallel for schedule(dynamic)
         for (row = 0; row < rast_map->nrows; row++) {
             if (GDALRasterIO
-                (bands[omp_get_thread_num()], GF_Read, 0, row,
+                (band, GF_Read, 0, row,
                  rast_map->ncols, 1,
                  (char *)rast_map->cells.v + row * row_size, rast_map->ncols,
                  1, gdt_type, 0, 0) != CE_None)
@@ -736,11 +722,7 @@ struct raster_map *read_raster(const char *path, const char *opts, int type,
         }
     }
 
-    free(bands);
-
-#pragma omp parallel
-    GDALClose(datasets[omp_get_thread_num()]);
-    free(datasets);
+    GDALClose(dataset);
 
     if (error)
         return NULL;
