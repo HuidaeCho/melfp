@@ -261,7 +261,7 @@ int main(int argc, char *argv[])
         printf("  -l lfp\tLayer name for output longest flow paths\n");
         printf("  -h heads\tLayer name for output longest flow path heads\n");
         printf
-            ("  -c coors.csv\tOutput longest flow path head coordinates file\n");
+            ("  -c coors.csv\tOutput longest flow path head coordinates CSV file\n");
         printf("  -t threads\tNumber of threads (default OMP_NUM_THREADS)\n");
 #ifdef LOOP_THEN_TASK
         printf("  -s size\tTracing stack size (default %d)\n",
