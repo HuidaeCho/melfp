@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
                     }
                     lfp_name = argv[++i];
                     break;
-                case 'p':
+                case 'h':
                     if (i == argc - 1) {
                         fprintf(stderr,
                                 "-%c: Missing layer name for output longest flow path headwater points\n",
@@ -234,7 +234,7 @@ int main(int argc, char *argv[])
             ("\t\tE,SE,S,SW,W,NW,N,NE: custom (e.g., 1,8,7,6,5,4,3,2 for taudem)\n");
         printf("  -l lfp\tLayer name for output longest flow paths\n");
         printf
-            ("  -p heads\tLayer name for output longest flow path headwater points\n");
+            ("  -h heads\tLayer name for output longest flow path headwater points\n");
         printf
             ("  -c coors.csv\tOutput longest flow path headwater coordinates\n");
 #ifdef LOOP_THEN_TASK
