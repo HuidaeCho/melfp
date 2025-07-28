@@ -423,7 +423,7 @@ static TRACE_UP_RETURN trace_up(struct raster_map *dir_map, int row, int col,
         if (up_stack->n + 1 >= tracing_stack_size) {
             up.row = next_row;
             up.col = next_col;
-            up.northo = 1;      //down_northo + ortho;
+            up.northo = down_northo + ortho;
             up.ndia = down_ndia + dia;
             push_up(up_stack, &up);
 
