@@ -264,7 +264,7 @@ int main(int argc, char *argv[])
             ("  -c coors.csv\tOutput longest flow path head coordinates CSV\n");
         printf("  -t threads\tNumber of threads (default OMP_NUM_THREADS)\n");
 #ifdef LOOP_THEN_TASK
-        printf("  -s size\tTracing stack size (default %d)\n",
+        printf("  -s size\tTracing stack size (default %d, 0 for guessing)\n",
                tracing_stack_size);
 #endif
         exit(print_usage == 1 ? EXIT_SUCCESS : EXIT_FAILURE);

@@ -349,7 +349,7 @@ static TRACE_UP_RETURN trace_up(struct raster_map *dir_map, int row, int col,
         int ortho = 0, dia = 0;
         struct cell up;
 
-        for (i = 0; i < 8; i++) {
+        for (i = 0; i < 8 && nup <= 1; i++) {
             int nbr_row = row + nbr_rcd[i][0];
             int nbr_col = col + nbr_rcd[i][1];
 
