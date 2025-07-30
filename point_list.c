@@ -22,7 +22,6 @@ void free_point_list(struct point_list *pl)
     init_point_list(pl);
 }
 
-/* adapted from r.path */
 void add_point(struct point_list *pl, int row, int col)
 {
     if (pl->n == pl->nalloc) {

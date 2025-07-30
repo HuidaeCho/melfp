@@ -5,9 +5,9 @@
 void init_outlet_list(struct outlet_list *ol)
 {
     ol->nalloc = ol->n = 0;
-    ol->row = NULL;
-    ol->col = NULL;
+    ol->row = ol->col = NULL;
     ol->id = NULL;
+    /* MELFP only */
     ol->northo = NULL;
     ol->ndia = NULL;
     ol->lflen = NULL;
@@ -32,6 +32,11 @@ void free_outlet_list(struct outlet_list *ol)
         free(ol->col);
     if (ol->id)
         free(ol->id);
+    /* MELFP only */
+    if(ol->northo)
+	free(ol->northo);
+    if(ol->ndia)
+	free(ol->ndia);
     if (ol->lflen)
         free(ol->lflen);
     if (ol->head_pl) {
@@ -45,10 +50,10 @@ void free_outlet_list(struct outlet_list *ol)
         free(ol->down);
     if (ol->flen)
         free(ol->flen);
+
     init_outlet_list(ol);
 }
 
-/* adapted from r.path */
 void add_outlet(struct outlet_list *ol, int row, int col, int id,
                 int find_full)
 {
@@ -57,6 +62,7 @@ void add_outlet(struct outlet_list *ol, int row, int col, int id,
         ol->row = realloc(ol->row, sizeof *ol->row * ol->nalloc);
         ol->col = realloc(ol->col, sizeof *ol->col * ol->nalloc);
         ol->id = realloc(ol->id, sizeof *ol->id * ol->nalloc);
+	/* MELFP only */
         ol->northo = realloc(ol->northo, sizeof *ol->northo * ol->nalloc);
         ol->ndia = realloc(ol->ndia, sizeof *ol->ndia * ol->nalloc);
         ol->lflen = realloc(ol->lflen, sizeof *ol->lflen * ol->nalloc);
@@ -75,6 +81,7 @@ void add_outlet(struct outlet_list *ol, int row, int col, int id,
     ol->row[ol->n] = row;
     ol->col[ol->n] = col;
     ol->id[ol->n] = id;
+    /* MELFP only */
     ol->northo[ol->n] = 0;
     ol->ndia[ol->n] = 0;
     ol->lflen[ol->n] = 0;
