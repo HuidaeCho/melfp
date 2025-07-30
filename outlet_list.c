@@ -8,8 +8,7 @@ void init_outlet_list(struct outlet_list *ol)
     ol->row = ol->col = NULL;
     ol->id = NULL;
     /* MELFP only */
-    ol->northo = NULL;
-    ol->ndia = NULL;
+    ol->northo = ol->ndia = NULL;
     ol->lflen = NULL;
     ol->head_pl = NULL;
     ol->has_up = NULL;
