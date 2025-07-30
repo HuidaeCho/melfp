@@ -30,6 +30,7 @@ struct outlet_list
     int nalloc, n;
     int *row, *col;
     int *id;
+    /* MELFP only */
     int *northo, *ndia;
     double *lflen;
     struct point_list *head_pl;
