@@ -1,9 +1,9 @@
 #define _MAIN_C_
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <gdal.h>
-#include <cpl_conv.h>
 #include <math.h>
 #include <omp.h>
 #ifdef _MSC_VER
