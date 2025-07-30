@@ -33,10 +33,10 @@ void free_outlet_list(struct outlet_list *ol)
     if (ol->id)
         free(ol->id);
     /* MELFP only */
-    if(ol->northo)
-	free(ol->northo);
-    if(ol->ndia)
-	free(ol->ndia);
+    if (ol->northo)
+        free(ol->northo);
+    if (ol->ndia)
+        free(ol->ndia);
     if (ol->lflen)
         free(ol->lflen);
     if (ol->head_pl) {
@@ -62,7 +62,7 @@ void add_outlet(struct outlet_list *ol, int row, int col, int id,
         ol->row = realloc(ol->row, sizeof *ol->row * ol->nalloc);
         ol->col = realloc(ol->col, sizeof *ol->col * ol->nalloc);
         ol->id = realloc(ol->id, sizeof *ol->id * ol->nalloc);
-	/* MELFP only */
+        /* MELFP only */
         ol->northo = realloc(ol->northo, sizeof *ol->northo * ol->nalloc);
         ol->ndia = realloc(ol->ndia, sizeof *ol->ndia * ol->nalloc);
         ol->lflen = realloc(ol->lflen, sizeof *ol->lflen * ol->nalloc);
