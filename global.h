@@ -46,16 +46,6 @@ struct point_list
     int *row, *col;
 };
 
-#ifdef LOOP_THEN_TASK
-#ifdef _MAIN_C_
-#define GLOBAL
-#else
-#define GLOBAL extern
-#endif
-
-GLOBAL int tracing_stack_size;
-#endif
-
 /* timeval_diff.c */
 long long timeval_diff(struct timeval *, struct timeval *, struct timeval *);
 
@@ -81,13 +71,25 @@ struct outlet_list *read_outlets(const char *, const char *, const char *,
 int write_outlets(const char *, struct outlet_list *);
 
 /* lfp.c */
-void lfp(struct raster_map *, struct outlet_list *, int, int);
+void lfp(struct raster_map *, struct outlet_list *, int, int
+#ifdef LOOP_THEN_TASK
+         , int
+#endif
+    );
 
 /* lfp_lessmem.c */
-void lfp_lessmem(struct raster_map *, struct outlet_list *, int, int);
+void lfp_lessmem(struct raster_map *, struct outlet_list *, int, int
+#ifdef LOOP_THEN_TASK
+                 , int
+#endif
+    );
 
 /* lfp_moremem.c */
-void lfp_moremem(struct raster_map *, struct outlet_list *, int);
+void lfp_moremem(struct raster_map *, struct outlet_list *, int
+#ifdef LOOP_THEN_TASK
+                 , int
+#endif
+    );
 
 /* write.c */
 int write_lfp(const char *, const char *, const char *, struct outlet_list *,

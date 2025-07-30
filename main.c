@@ -27,6 +27,7 @@ int main(int argc, char *argv[])
 
 #ifdef LOOP_THEN_TASK
     char *p;
+    int tracing_stack_size;
 #endif
 
     gettimeofday(&first_time, NULL);
@@ -351,7 +352,11 @@ int main(int argc, char *argv[])
         printf("Finding longest flow paths...\n");
 
         gettimeofday(&start_time, NULL);
-        lfp(dir_map, outlet_l, find_full, use_lessmem);
+        lfp(dir_map, outlet_l, find_full, use_lessmem
+#ifdef LOOP_THEN_TASK
+            , tracing_stack_size
+#endif
+            );
         gettimeofday(&end_time, NULL);
         printf
             ("Computation time for longest flow paths: %lld microsec\n",
