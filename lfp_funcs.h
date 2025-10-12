@@ -259,11 +259,8 @@ void LFP(struct raster_map *dir_map, struct outlet_list *outlet_l,
                          * branching node */
                         if (trace_up
                             (dir_map, row, col, down_northo, down_ndia,
-                             &northo, &ndia, &lflen, &head_pl, task_up_stack
-#ifdef LOOP_THEN_TASK
-                             , tracing_stack_size
-#endif
-                            )) {
+                             &northo, &ndia, &lflen, &head_pl, task_up_stack,
+                             tracing_stack_size)) {
                             while (task_up_stack->n) {
                                 struct cell task_up;
 
