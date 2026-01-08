@@ -5,11 +5,6 @@ authors:
     given-names: Huidae
 date-released: 2025-09
 version: "0.1.0"
-doi: 10.1016/j.envsoft.2025.106630
-journal: "Environmental Modelling & Software"
-volume: 193
-pages: "106630"
-year: 2025
 message: >
   If you use this software or its algorithms, please cite the associated journal article.
 preferred-citation:
@@ -22,4 +17,5 @@ preferred-citation:
   volume: 193
   pages: "106630"
   year: 2025
+  month: sep
   doi: 10.1016/j.envsoft.2025.106630
